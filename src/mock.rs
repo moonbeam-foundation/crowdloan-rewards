@@ -17,8 +17,9 @@
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{GenesisBuild, OnFinalize, OnInitialize},
+	construct_runtime,
+	parameter_types,
+	traits::{GenesisBuild, OnInitialize, OnFinalize},
 };
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
@@ -34,6 +35,7 @@ pub type Balance = u128;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+ 
 
 construct_runtime!(
 	pub enum Test where
@@ -44,6 +46,7 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Crowdloan: pallet_crowdloan_rewards::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Utility: pallet_utility::{Pallet, Call, Storage, Event},
 	}
 );
 
@@ -98,9 +101,16 @@ parameter_types! {
 
 impl Config for Test {
 	type Event = Event;
+	type Call = Call;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
+}
+
+impl pallet_utility::Config for Test {
+	type Event = Event;
+	type Call = Call;
+	type WeightInfo = ();
 }
 
 fn genesis(
@@ -178,5 +188,6 @@ pub(crate) fn roll_to(n: u64) {
 		System::on_initialize(System::block_number());
 		Balances::on_initialize(System::block_number());
 		Crowdloan::on_initialize(System::block_number());
+		Utility::on_initialize(System::block_number());
 	}
 }
