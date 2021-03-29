@@ -17,13 +17,10 @@
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
-	construct_runtime,
-	parameter_types,
-	traits::{GenesisBuild, OnInitialize, OnFinalize}
+	construct_runtime, parameter_types,
+	traits::{GenesisBuild, OnFinalize, OnInitialize},
 };
-use sp_core::ed25519;
-use sp_core::Pair;
-use sp_core::H256;
+use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
 	testing::Header,
@@ -37,7 +34,6 @@ pub type Balance = u128;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-
 
 construct_runtime!(
 	pub enum Test where
