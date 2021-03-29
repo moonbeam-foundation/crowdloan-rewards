@@ -202,7 +202,7 @@ pub mod pallet {
 				info.claimed_reward < info.total_reward,
 				Error::<T>::RewardsAlreadyClaimed
 			);
-			let now = frame_system::Module::<T>::block_number();
+			let now = frame_system::Pallet::<T>::block_number();
 
 			let payable_per_block = info.total_reward
 				/ T::VestingPeriod::get()

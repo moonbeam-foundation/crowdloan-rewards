@@ -25,7 +25,7 @@ use sp_runtime::MultiSignature;
 fn geneses() {
 	let pairs = get_ed25519_pairs(3);
 	two_assigned_three_unassigned().execute_with(|| {
-		assert!(Sys::events().is_empty());
+		assert!(System::events().is_empty());
 		// accounts_payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		assert!(Crowdloan::accounts_payable(&2).is_some());
@@ -88,7 +88,7 @@ fn proving_assignation_works() {
 		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_some());
 
-		let expected = vec![Event::NativeIdentityAssociated(
+		let expected = vec![crate::Event::NativeIdentityAssociated(
 			pairs[0].public().into(),
 			3,
 			500,
@@ -132,11 +132,11 @@ fn paying_works() {
 		);
 
 		let expected = vec![
-			Event::RewardsPaid(1, 248),
-			Event::RewardsPaid(1, 62),
-			Event::RewardsPaid(1, 62),
-			Event::RewardsPaid(1, 62),
-			Event::RewardsPaid(1, 66),
+			crate::Event::RewardsPaid(1, 248),
+			crate::Event::RewardsPaid(1, 62),
+			crate::Event::RewardsPaid(1, 62),
+			crate::Event::RewardsPaid(1, 62),
+			crate::Event::RewardsPaid(1, 66),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -159,8 +159,8 @@ fn paying_late_joiner_works() {
 		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().last_paid, 12u64);
 		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().claimed_reward, 500);
 		let expected = vec![
-			Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
-			Event::RewardsPaid(3, 500),
+			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
+			crate::Event::RewardsPaid(3, 500),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -183,9 +183,9 @@ fn update_address_works() {
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().last_paid, 6u64);
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 372);
 		let expected = vec![
-			Event::RewardsPaid(1, 248),
-			Event::RewardAddressUpdated(1, 8),
-			Event::RewardsPaid(8, 124),
+			crate::Event::RewardsPaid(1, 248),
+			crate::Event::RewardAddressUpdated(1, 8),
+			crate::Event::RewardsPaid(8, 124),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -209,10 +209,10 @@ fn update_address_with_existing_address_works() {
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().last_paid, 6u64);
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 746);
 		let expected = vec![
-			Event::RewardsPaid(1, 248),
-			Event::RewardsPaid(2, 248),
-			Event::RewardAddressUpdated(1, 2),
-			Event::RewardsPaid(2, 250),
+			crate::Event::RewardsPaid(1, 248),
+			crate::Event::RewardsPaid(2, 248),
+			crate::Event::RewardAddressUpdated(1, 2),
+			crate::Event::RewardsPaid(2, 250),
 		];
 		assert_eq!(events(), expected);
 	});
