@@ -15,10 +15,12 @@
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Test utilities
+
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
 	construct_runtime,
 	parameter_types,
+	traits::{GenesisBuild, OnInitialize, OnFinalize}
 };
 use sp_core::ed25519;
 use sp_core::Pair;
@@ -33,10 +35,10 @@ use sp_std::convert::TryInto;
 
 pub type AccountId = u64;
 pub type Balance = u128;
-pub type BlockNumber = u64;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
-type Block = frame_system::mocking::MockBlock<TestRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type Block = frame_system::mocking::MockBlock<Test>;
+
 
 construct_runtime!(
 	pub enum Test where
@@ -56,7 +58,7 @@ parameter_types! {
 		frame_system::limits::BlockWeights::simple_max(1024);
 }
 
-impl frame_system::Config for TestRuntime {
+impl frame_system::Config for Test {
 	type BaseCallFilter = ();
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -74,7 +76,7 @@ impl frame_system::Config for TestRuntime {
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -88,20 +90,19 @@ parameter_types! {
 impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type Balance = Balance;
-	type Event = MetaEvent;
+	type Event = Event;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
 }
 
-
 parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
 }
 
 impl Config for Test {
-	type Event = MetaEvent;
+	type Event = Event;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -115,7 +116,7 @@ fn genesis(
 		.build_storage::<Test>()
 		.unwrap();
 
-	GenesisConfig::<Test> {
+	pallet_crowdloan_rewards::GenesisConfig::<Test> {
 		associated: assigned,
 		unassociated: unassigned,
 		reward_ratio: 1,
@@ -160,12 +161,12 @@ pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
 	)
 }
 
-pub(crate) fn events() -> Vec<Event<Test>> {
+pub(crate) fn events() -> Vec<super::Event<Test>> {
 	System::events()
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let MetaEvent::crowdloan_rewards(inner) = e {
+			if let Event::pallet_crowdloan_rewards(inner) = e {
 				Some(inner)
 			} else {
 				None
@@ -173,7 +174,6 @@ pub(crate) fn events() -> Vec<Event<Test>> {
 		})
 		.collect::<Vec<_>>()
 }
-
 pub(crate) fn roll_to(n: u64) {
 	while System::block_number() < n {
 		Crowdloan::on_finalize(System::block_number());
