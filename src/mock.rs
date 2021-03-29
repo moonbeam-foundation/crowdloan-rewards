@@ -15,7 +15,6 @@
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Test utilities
-
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
 	construct_runtime,
