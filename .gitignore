@@ -1,0 +1,10 @@
+# MacOS thing
+**/.DS_Store
+
+# Rust directories
+**/target
+**/scripts/tmp
+**/node_modules
+
+# Don't check in Cargo.lock because this is a library
+Cargo.lock
