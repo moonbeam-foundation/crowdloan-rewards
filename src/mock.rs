@@ -15,13 +15,10 @@
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Test utilities
-use crate::*;
-use frame_support::traits::GenesisBuild;
-use frame_support::traits::Get;
+use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
-	impl_outer_event, impl_outer_origin, parameter_types,
-	traits::{OnFinalize, OnInitialize},
-	weights::Weight,
+	construct_runtime,
+	parameter_types,
 };
 use sp_core::ed25519;
 use sp_core::Pair;
@@ -30,7 +27,6 @@ use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
 };
 use sp_std::convert::From;
 use sp_std::convert::TryInto;
@@ -38,86 +34,78 @@ use sp_std::convert::TryInto;
 pub type AccountId = u64;
 pub type Balance = u128;
 pub type BlockNumber = u64;
-pub struct TestVestingPeriod(pub BlockNumber);
 
-impl Get<u64> for TestVestingPeriod {
-	fn get() -> u64 {
-		return 8u64;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
+type Block = frame_system::mocking::MockBlock<TestRuntime>;
+
+construct_runtime!(
+	pub enum Test where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Crowdloan: pallet_crowdloan_rewards::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
-}
+);
 
-impl_outer_origin! {
-	pub enum Origin for Test where system = frame_system {}
-}
-
-mod crowdloan_rewards {
-	pub use super::super::*;
-}
-
-impl_outer_event! {
-	pub enum MetaEvent for Test {
-		frame_system<T>,
-		pallet_balances<T>,
-		crowdloan_rewards<T>,
-	}
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Test;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
-	pub const SS58Prefix: u8 = 42;
+	pub BlockWeights: frame_system::limits::BlockWeights =
+		frame_system::limits::BlockWeights::simple_max(1024);
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for TestRuntime {
 	type BaseCallFilter = ();
-	type DbWeight = ();
+	type BlockWeights = ();
+	type BlockLength = ();
 	type Origin = Origin;
 	type Index = u64;
-	type BlockNumber = BlockNumber;
-	type Call = ();
+	type Call = Call;
+	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
+	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = MetaEvent;
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
 	type Version = ();
-	type PalletInfo = ();
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type PalletInfo = PalletInfo;
+	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
-	type BlockWeights = ();
-	type BlockLength = ();
-	type SS58Prefix = SS58Prefix;
+	type SS58Prefix = ();
 }
 
 parameter_types! {
 	pub const ExistentialDeposit: u128 = 1;
 }
+
 impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type Balance = Balance;
 	type Event = MetaEvent;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = frame_system::Module<Test>;
+	type AccountStore = System;
 	type WeightInfo = ();
 }
+
+
+parameter_types! {
+	pub const TestVestingPeriod: u64 = 8;
+}
+
 impl Config for Test {
 	type Event = MetaEvent;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
 }
-pub type Balances = pallet_balances::Module<Test>;
-pub type Crowdloan = Module<Test>;
-pub type Sys = frame_system::Module<Test>;
 
 fn genesis(
 	assigned: Vec<([u8; 32], AccountId, u32)>,
@@ -136,7 +124,7 @@ fn genesis(
 	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::from(storage);
-	ext.execute_with(|| Sys::set_block_number(1));
+	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
 
@@ -173,7 +161,7 @@ pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
 }
 
 pub(crate) fn events() -> Vec<Event<Test>> {
-	Sys::events()
+	System::events()
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
@@ -187,13 +175,13 @@ pub(crate) fn events() -> Vec<Event<Test>> {
 }
 
 pub(crate) fn roll_to(n: u64) {
-	while Sys::block_number() < n {
-		Crowdloan::on_finalize(Sys::block_number());
-		Balances::on_finalize(Sys::block_number());
-		Sys::on_finalize(Sys::block_number());
-		Sys::set_block_number(Sys::block_number() + 1);
-		Sys::on_initialize(Sys::block_number());
-		Balances::on_initialize(Sys::block_number());
-		Crowdloan::on_initialize(Sys::block_number());
+	while System::block_number() < n {
+		Crowdloan::on_finalize(System::block_number());
+		Balances::on_finalize(System::block_number());
+		System::on_finalize(System::block_number());
+		System::set_block_number(System::block_number() + 1);
+		System::on_initialize(System::block_number());
+		Balances::on_initialize(System::block_number());
+		Crowdloan::on_initialize(System::block_number());
 	}
 }
