@@ -18,13 +18,9 @@
 use crate::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
-use parity_scale_codec::Encode;
-use sp_core::Pair;
-use sp_runtime::MultiSignature;
 #[test]
 fn geneses() {
-	let pairs = get_ed25519_pairs(3);
-	two_assigned_three_unassigned().execute_with(|| {
+	two_assigned().execute_with(|| {
 		assert!(System::events().is_empty());
 		// accounts_payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
@@ -36,70 +32,14 @@ fn geneses() {
 		// claimed address existence
 		assert!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).is_some());
 		assert!(Crowdloan::claimed_relay_chain_ids(&[2u8; 32]).is_some());
-		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_none());
-		assert!(Crowdloan::claimed_relay_chain_ids(pairs[1].public().as_array_ref()).is_none());
-		assert!(Crowdloan::claimed_relay_chain_ids(pairs[2].public().as_array_ref()).is_none());
-
-		// unassociated_contributions
-		assert!(Crowdloan::unassociated_contributions(&[1u8; 32]).is_none());
-		assert!(Crowdloan::unassociated_contributions(&[2u8; 32]).is_none());
-		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_some());
-		assert!(Crowdloan::unassociated_contributions(pairs[1].public().as_array_ref()).is_some());
-		assert!(Crowdloan::unassociated_contributions(pairs[2].public().as_array_ref()).is_some());
+		assert!(Crowdloan::claimed_relay_chain_ids(&[3u8; 32]).is_none());
+		assert!(Crowdloan::claimed_relay_chain_ids(&[4u8; 32]).is_none());
+		assert!(Crowdloan::claimed_relay_chain_ids(&[5u8; 32]).is_none());
 	});
 }
-#[test]
-fn proving_assignation_works() {
-	let pairs = get_ed25519_pairs(3);
-	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
-	two_assigned_three_unassigned().execute_with(|| {
-		// 4 is not payable first
-		assert!(Crowdloan::accounts_payable(&3).is_none());
-		roll_to(4);
-		// Signature is wrong, prove fails
-		assert_noop!(
-			Crowdloan::associate_native_identity(
-				Origin::signed(4),
-				4,
-				pairs[0].public().into(),
-				signature.clone()
-			),
-			Error::<Test>::InvalidClaimSignature
-		);
-		// Signature is right, prove passes
-		assert_ok!(Crowdloan::associate_native_identity(
-			Origin::signed(4),
-			3,
-			pairs[0].public().into(),
-			signature.clone()
-		));
-		// Signature is right, but address already claimed
-		assert_noop!(
-			Crowdloan::associate_native_identity(
-				Origin::signed(4),
-				3,
-				pairs[0].public().into(),
-				signature
-			),
-			Error::<Test>::AlreadyAssociated
-		);
-		// now three is payable
-		assert!(Crowdloan::accounts_payable(&3).is_some());
-		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
-		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_some());
-
-		let expected = vec![crate::Event::NativeIdentityAssociated(
-			pairs[0].public().into(),
-			3,
-			500,
-		)];
-		assert_eq!(events(), expected);
-	});
-}
-
 #[test]
 fn paying_works() {
-	two_assigned_three_unassigned().execute_with(|| {
+	two_assigned().execute_with(|| {
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(4);
@@ -143,32 +83,8 @@ fn paying_works() {
 }
 
 #[test]
-fn paying_late_joiner_works() {
-	let pairs = get_ed25519_pairs(3);
-	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
-	two_assigned_three_unassigned().execute_with(|| {
-		//
-		roll_to(12);
-		assert_ok!(Crowdloan::associate_native_identity(
-			Origin::signed(4),
-			3,
-			pairs[0].public().into(),
-			signature.clone()
-		));
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
-		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().last_paid, 12u64);
-		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().claimed_reward, 500);
-		let expected = vec![
-			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
-			crate::Event::RewardsPaid(3, 500),
-		];
-		assert_eq!(events(), expected);
-	});
-}
-
-#[test]
 fn update_address_works() {
-	two_assigned_three_unassigned().execute_with(|| {
+	two_assigned().execute_with(|| {
 		roll_to(4);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_noop!(
@@ -193,7 +109,7 @@ fn update_address_works() {
 
 #[test]
 fn update_address_with_existing_address_works() {
-	two_assigned_three_unassigned().execute_with(|| {
+	two_assigned().execute_with(|| {
 		roll_to(4);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(2)));

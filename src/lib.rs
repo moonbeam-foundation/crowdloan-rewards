@@ -47,14 +47,6 @@
 //! The simplest way is that the native identity and contribution amount are configured at genesis.
 //! This makes sense in a scenario where the crowdloan took place entirely offchain.
 //!
-//! * **Unassociated at Genesis**
-//!
-//! When the crowdloan takes place on-relay-chain, contributors will not have a way to specify a native account
-//! into which they will receive rewards on the parachain. TODO that would be easy to add to the
-//! relay chain actually. In this case the genesis config contains information about the
-//! relay chain style contributor address, and the contribution amount. In this case the
-//! contributor is responsible for making a transaction that associates a native ID. The tx
-//! includes a signature by the relay chain identity over the native identity.
 //!
 //! * **ReadingRelayState**
 //!
@@ -85,8 +77,7 @@ pub mod pallet {
 	use log::warn;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::Saturating;
-	use sp_runtime::traits::Verify;
-	use sp_runtime::{MultiSignature, SaturatedConversion};
+	use sp_runtime::SaturatedConversion;
 	use sp_std::convert::TryInto;
 	/// The Author Filter pallet
 	#[pallet::pallet]
@@ -134,62 +125,6 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Associate a native rewards_destination identity with a crowdloan contribution.
-		///
-		/// This is an unsigned call because the caller may not have any funds to pay fees with.
-		/// This is inspired by Polkadot's claims pallet:
-		/// https://github.com/paritytech/polkadot/blob/master/runtime/common/src/claims.rs
-		///
-		/// This function and the entire concept of unassociated contributions may be obviated if
-		/// They will accept a memo filed in the Polkadot crowdloan pallet.
-		#[pallet::weight(0)]
-		pub fn associate_native_identity(
-			origin: OriginFor<T>,
-			reward_account: T::AccountId,
-			relay_account: T::RelayChainAccountId,
-			proof: MultiSignature,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-			// Check the proof:
-			// 1. Is signed by an actual unassociated contributor
-			// 2. Signs a valid native identity
-			// Check the proof. The Proof consists of a Signature of the rewarded account with the
-			// claimer key
-			let payload = reward_account.encode();
-			ensure!(
-				proof.verify(payload.as_slice(), &relay_account.clone().into()),
-				Error::<T>::InvalidClaimSignature
-			);
-
-			// We ensure the relay chain id wast not yet associated to avoid multi-claiming
-			ensure!(
-				ClaimedRelayChainIds::<T>::get(&relay_account).is_none(),
-				Error::<T>::AlreadyAssociated
-			);
-
-			// Upon error this should check the relay chain state in this case
-			let reward_info = UnassociatedContributions::<T>::get(&relay_account)
-				.ok_or(Error::<T>::NoAssociatedClaim)?;
-
-			// Insert on payable
-			AccountsPayable::<T>::insert(&reward_account, &reward_info);
-
-			// Remove from unassociated
-			<UnassociatedContributions<T>>::remove(&relay_account);
-
-			// Insert in mapping
-			ClaimedRelayChainIds::<T>::insert(&relay_account, ());
-
-			// Emit Event
-			Self::deposit_event(Event::NativeIdentityAssociated(
-				relay_account,
-				reward_account,
-				reward_info.total_reward,
-			));
-
-			Ok(Default::default())
-		}
-
 		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(0)]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -304,10 +239,6 @@ pub mod pallet {
 	#[pallet::getter(fn claimed_relay_chain_ids)]
 	pub type ClaimedRelayChainIds<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, ()>;
-	#[pallet::storage]
-	#[pallet::getter(fn unassociated_contributions)]
-	pub type UnassociatedContributions<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, RewardInfo<T>>;
 
 	// Design decision:
 	// Genesis config contributions are specified in relay-chain currency
@@ -317,8 +248,6 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		/// Contributions that have a native account id associated already.
 		pub associated: Vec<(T::RelayChainAccountId, T::AccountId, u32)>,
-		/// Contributions that will need a native account id to be associated through an extrinsic.
-		pub unassociated: Vec<(T::RelayChainAccountId, u32)>,
 		/// The ratio of (reward tokens to be paid) / (relay chain funds contributed)
 		/// This is dead stupid simple using a u32. So the reward amount has to be an integer
 		/// multiple of the contribution amount. A better fixed-ratio solution would be
@@ -332,7 +261,6 @@ pub mod pallet {
 		fn default() -> Self {
 			Self {
 				associated: Vec::new(),
-				unassociated: Vec::new(),
 				reward_ratio: 1,
 			}
 		}
@@ -342,7 +270,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			// Warn if no contributions (associated or not) are specified
-			if self.associated.is_empty() && self.unassociated.is_empty() {
+			if self.associated.is_empty() {
 				warn!("Rewards: No contributions configured. Pallet will not be useable.")
 			}
 
@@ -359,28 +287,12 @@ pub mod pallet {
 					AccountsPayable::<T>::insert(native_account, reward_info);
 					ClaimedRelayChainIds::<T>::insert(relay_account, ());
 				});
-
-			// Initialize storage for UN-associated contributions
-			self.unassociated
-				.iter()
-				.for_each(|(relay_account, contrib)| {
-					let reward_info = RewardInfo {
-						total_reward: BalanceOf::<T>::from(*contrib)
-							.saturating_mul(BalanceOf::<T>::from(self.reward_ratio)),
-						claimed_reward: 0u32.into(),
-						last_paid: 0u32.into(),
-					};
-					UnassociatedContributions::<T>::insert(relay_account, reward_info);
-				});
 		}
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Someone has proven they made a contribution and associated a native identity with it.
-		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(T::AccountId, BalanceOf<T>),

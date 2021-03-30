@@ -20,14 +20,13 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{GenesisBuild, OnFinalize, OnInitialize},
 };
-use sp_core::{ed25519, Pair, H256};
+use sp_core::H256;
 use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use sp_std::convert::From;
-use sp_std::convert::TryInto;
 
 pub type AccountId = u64;
 pub type Balance = u128;
@@ -103,17 +102,13 @@ impl Config for Test {
 	type VestingPeriod = TestVestingPeriod;
 }
 
-fn genesis(
-	assigned: Vec<([u8; 32], AccountId, u32)>,
-	unassigned: Vec<([u8; 32], u32)>,
-) -> sp_io::TestExternalities {
+fn genesis(assigned: Vec<([u8; 32], AccountId, u32)>) -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
 
 	pallet_crowdloan_rewards::GenesisConfig::<Test> {
 		associated: assigned,
-		unassociated: unassigned,
 		reward_ratio: 1,
 	}
 	.assimilate_storage(&mut storage)
@@ -124,36 +119,12 @@ fn genesis(
 	ext
 }
 
-pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
-	let seed: u128 = 12345678901234567890123456789012;
-	let mut pairs = Vec::new();
-	for i in 0..num {
-		pairs.push(ed25519::Pair::from_seed(
-			(seed.clone() + i as u128)
-				.to_string()
-				.as_bytes()
-				.try_into()
-				.unwrap(),
-		))
-	}
-	pairs
-}
-
-pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
-	let pairs = get_ed25519_pairs(3);
-	genesis(
-		vec![
-			// validators
-			([1u8; 32].into(), 1, 500),
-			([2u8; 32].into(), 2, 500),
-		],
-		vec![
-			// validators
-			(pairs[0].public().into(), 500),
-			(pairs[1].public().into(), 500),
-			(pairs[2].public().into(), 500),
-		],
-	)
+pub(crate) fn two_assigned() -> sp_io::TestExternalities {
+	genesis(vec![
+		// validators
+		([1u8; 32].into(), 1, 500),
+		([2u8; 32].into(), 2, 500),
+	])
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {
