@@ -121,7 +121,14 @@ fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::Tes
 
 	let mut ext = sp_io::TestExternalities::from(storage);
 	ext.execute_with(|| {
-		Crowdloan::initialize_reward_vec(Origin::root(), contributions.clone(), 1, 0, contributions.len() as u32).unwrap();
+		Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			contributions.clone(),
+			1,
+			0,
+			contributions.len() as u32,
+		)
+		.unwrap();
 		System::set_block_number(1)
 	});
 	ext

@@ -277,6 +277,9 @@ pub mod pallet {
 
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
+		/// This function ensures that the current block number>=NextInitialization
+		/// Also, updates NextInitialization when given index + len(contributors) = limit
+		/// TODO Should we perform sanity checks here?
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -288,7 +291,10 @@ pub mod pallet {
 			ensure_root(origin)?;
 			let now = frame_system::Pallet::<T>::block_number();
 			let next_init = <NextInitialization<T>>::get();
-			ensure!(now >= next_init, Error::<T>::AlreadyInitialized);
+			ensure!(
+				now >= next_init,
+				Error::<T>::CurrentLeasePeriodAlreadyInitialized
+			);
 			for (relay_account, native_account, contribution) in &contributions {
 				ensure!(
 					ClaimedRelayChainIds::<T>::get(&relay_account).is_none()
@@ -310,7 +316,7 @@ pub mod pallet {
 				}
 			}
 			if index + contributions.len() as u32 == limit {
-				<NextInitialization<T>>::put(now);
+				<NextInitialization<T>>::put(now + T::LeasePeriod::get());
 			}
 			Ok(Default::default())
 		}
@@ -321,7 +327,10 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
+		/// User trying to intialize an address that has already been initialized
 		AlreadyInitialized,
+		/// Current Lease Period has already been initialized
+		CurrentLeasePeriodAlreadyInitialized,
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided a wrong signature
 		InvalidClaimSignature,
@@ -350,7 +359,8 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, RewardInfo<T>>;
 	#[pallet::storage]
 	#[pallet::getter(fn next_initialization)]
-	pub type NextInitialization<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery, T::DefaultNextInitialization>;
+	pub type NextInitialization<T: Config> =
+		StorageValue<_, T::BlockNumber, ValueQuery, T::DefaultNextInitialization>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
