@@ -86,6 +86,10 @@ pub mod pallet {
 	/// Configuration trait of this pallet.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		/// The period after which the contribution storage can be initialized again
+		type LeasePeriod: Get<Self::BlockNumber>;
+		/// When we allow for first initialization
+		type DefaultNextInitialization: Get<Self::BlockNumber>;
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
@@ -102,7 +106,8 @@ pub mod pallet {
 			+ Debug
 			+ Into<AccountId32>;
 
-		/// The total vesting period.
+		/// The total vesting period. Ideally this should be less than the lease period to ensure
+		/// there is no overlap between contributors from two different auctions
 		type VestingPeriod: Get<Self::BlockNumber>;
 	}
 
@@ -277,27 +282,35 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			contributions: Vec<(T::RelayChainAccountId, Option<T::AccountId>, u32)>,
 			reward_ratio: u32,
+			index: u32,
+			limit: u32,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
-			for (relay_account, native_account, contribution) in contributions {
+			let now = frame_system::Pallet::<T>::block_number();
+			let next_init = <NextInitialization<T>>::get();
+			ensure!(now >= next_init, Error::<T>::AlreadyInitialized);
+			for (relay_account, native_account, contribution) in &contributions {
 				ensure!(
 					ClaimedRelayChainIds::<T>::get(&relay_account).is_none()
 						&& UnassociatedContributions::<T>::get(&relay_account).is_none(),
 					Error::<T>::AlreadyInitialized
 				);
 				let reward_info = RewardInfo {
-					total_reward: BalanceOf::<T>::from(contribution)
+					total_reward: BalanceOf::<T>::from(*contribution)
 						.saturating_mul(BalanceOf::<T>::from(reward_ratio)),
 					claimed_reward: 0u32.into(),
 					last_paid: 0u32.into(),
 				};
 
 				if let Some(native_account) = native_account {
-					AccountsPayable::<T>::insert(&native_account, reward_info);
-					ClaimedRelayChainIds::<T>::insert(&relay_account, ());
+					AccountsPayable::<T>::insert(native_account, reward_info);
+					ClaimedRelayChainIds::<T>::insert(relay_account, ());
 				} else {
-					UnassociatedContributions::<T>::insert(&relay_account, reward_info);
+					UnassociatedContributions::<T>::insert(relay_account, reward_info);
 				}
+			}
+			if index + contributions.len() as u32 == limit {
+				<NextInitialization<T>>::put(now);
 			}
 			Ok(Default::default())
 		}
@@ -335,6 +348,9 @@ pub mod pallet {
 	#[pallet::getter(fn unassociated_contributions)]
 	pub type UnassociatedContributions<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, RewardInfo<T>>;
+	#[pallet::storage]
+	#[pallet::getter(fn next_initialization)]
+	pub type NextInitialization<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery, T::DefaultNextInitialization>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]

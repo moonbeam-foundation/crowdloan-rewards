@@ -229,23 +229,30 @@ fn initialize_new_addresses() {
 			Crowdloan::initialize_reward_vec(
 				Origin::root(),
 				vec![([1u8; 32].into(), Some(1), 500)],
+				1,
+				0,
 				1
 			),
 			Error::<Test>::AlreadyInitialized
 		);
 		assert_ok!(
 			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
-				crate::Call::initialize_reward_vec(vec![([1u8; 32].into(), Some(1), 500)], 1)
+				crate::Call::initialize_reward_vec(vec![([1u8; 32].into(), Some(1), 500)], 1, 0,
+				1)
 			)]))
 			.dispatch(Origin::root())
 		);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![(pairs[4].public().into(), Some(3), 500)],
+				1,
+				0,
 				1
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![([1u8; 32].into(), Some(1), 500)],
+				1,
+				0,
 				1
 			))
 		]))
@@ -257,10 +264,14 @@ fn initialize_new_addresses() {
 		assert_ok!(mock::Call::Utility(UtilityCall::batch(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![(pairs[5].public().into(), Some(6), 500)],
+				1,
+				0,
 				1
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![(pairs[6].public().into(), Some(7), 500)],
+				1,
+				0,
 				1
 			))
 		]))
