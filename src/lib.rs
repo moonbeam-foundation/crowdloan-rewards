@@ -79,15 +79,10 @@ mod tests;
 pub mod pallet {
 
 	use frame_support::dispatch::fmt::Debug;
-	use frame_support::dispatch::{
-		Dispatchable, GetDispatchInfo, PostDispatchInfo, UnfilteredDispatchable,
-	};
 	use frame_support::pallet_prelude::*;
 	use frame_support::traits::Currency;
-	use frame_support::weights::extract_actual_weight;
 	use frame_system::pallet_prelude::*;
 	use log::warn;
-	use pallet_utility::{Config as UtilityConfig, WeightInfo};
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::Saturating;
 	use sp_runtime::traits::Verify;
@@ -99,11 +94,7 @@ pub mod pallet {
 
 	/// Configuration trait of this pallet.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + UtilityConfig {
-		type Call: Parameter
-			+ Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo>
-			+ GetDispatchInfo
-			+ UnfilteredDispatchable<Origin = Self::Origin>;
+	pub trait Config: frame_system::Config {
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
@@ -285,39 +276,6 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		// Copy-paste from https://docs.rs/pallet-utility/3.0.0/pallet_utility/
-		#[pallet::weight(0)]
-		pub fn batch_calls(
-			origin: OriginFor<T>,
-			calls: Vec<<T as Config>::Call>,
-		) -> DispatchResultWithPostInfo {
-			let is_root = ensure_root(origin.clone()).is_ok();
-			let calls_len = calls.len();
-			// Track the actual weight of each of the batch calls.
-			let mut weight: Weight = 0;
-			for (index, call) in calls.into_iter().enumerate() {
-				let info = call.get_dispatch_info();
-				// If origin is root, don't apply any dispatch filters; root can call anything.
-				let result = if is_root {
-					call.dispatch_bypass_filter(origin.clone())
-				} else {
-					call.dispatch(origin.clone())
-				};
-				// Add the weight of this call.
-				weight = weight.saturating_add(extract_actual_weight(&result, &info));
-				if let Err(e) = result {
-					Self::deposit_event(Event::BatchInterrupted(index as u32, e.error));
-					// Take the weight of this function itself into account.
-					let base_weight = T::WeightInfo::batch(index.saturating_add(1) as u32);
-					// Return the actual used weight + base_weight of this call.
-					return Ok(Some(base_weight + weight).into());
-				}
-			}
-			Self::deposit_event(Event::BatchCompleted);
-			let base_weight = T::WeightInfo::batch(calls_len as u32);
-			Ok(Some(base_weight + weight).into())
-		}
-
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
 		#[pallet::weight(0)]
@@ -453,11 +411,6 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Batch of dispatches did not complete fully. Index of first failing dispatch given, as
-		/// well as the error. \[index, error\]
-		BatchInterrupted(u32, DispatchError),
-		/// Batch of dispatches completed fully with no error.
-		BatchCompleted,
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
 		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),

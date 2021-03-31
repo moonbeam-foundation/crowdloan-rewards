@@ -16,7 +16,7 @@
 
 //! Unit testing
 use crate::*;
-use frame_support::dispatch::DispatchError;
+use frame_support::dispatch::{DispatchError, Dispatchable};
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
@@ -233,50 +233,45 @@ fn initialize_new_addresses() {
 			),
 			Error::<Test>::AlreadyInitialized
 		);
-		assert_ok!(Crowdloan::batch_calls(
-			Origin::root(),
-			vec![mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+		assert_ok!(
+			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
+				crate::Call::initialize_reward_vec(vec![([1u8; 32].into(), Some(1), 500)], 1)
+			)]))
+			.dispatch(Origin::root())
+		);
+		assert_ok!(mock::Call::Utility(UtilityCall::batch(vec![
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+				vec![(pairs[4].public().into(), Some(3), 500)],
+				1
+			)),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![([1u8; 32].into(), Some(1), 500)],
 				1
-			))]
-		),);
-		assert_ok!(Crowdloan::batch_calls(
-			Origin::root(),
-			vec![
-				mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-					vec![(pairs[4].public().into(), Some(3), 500)],
-					1
-				)),
-				mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-					vec![([1u8; 32].into(), Some(1), 500)],
-					1
-				))
-			]
-		));
+			))
+		]))
+		.dispatch(Origin::root()));
 
 		// assert pairs[4] has been associated
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[4].public().as_array_ref()).is_some());
 
-		assert_ok!(Crowdloan::batch_calls(
-			Origin::root(),
-			vec![
-				mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-					vec![(pairs[5].public().into(), Some(6), 500)],
-					1
-				)),
-				mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-					vec![(pairs[6].public().into(), Some(7), 500)],
-					1
-				))
-			]
-		));
+		assert_ok!(mock::Call::Utility(UtilityCall::batch(vec![
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+				vec![(pairs[5].public().into(), Some(6), 500)],
+				1
+			)),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+				vec![(pairs[6].public().into(), Some(7), 500)],
+				1
+			))
+		]))
+		.dispatch(Origin::root()));
 
 		// assert pairs[4] has been associated
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[5].public().as_array_ref()).is_some());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[6].public().as_array_ref()).is_some());
 
 		let expected = vec![
-			crate::Event::BatchInterrupted(
+			pallet_utility::Event::BatchInterrupted(
 				0,
 				DispatchError::Module {
 					index: 2,
@@ -284,7 +279,7 @@ fn initialize_new_addresses() {
 					message: None,
 				},
 			),
-			crate::Event::BatchInterrupted(
+			pallet_utility::Event::BatchInterrupted(
 				1,
 				DispatchError::Module {
 					index: 2,
@@ -292,8 +287,8 @@ fn initialize_new_addresses() {
 					message: None,
 				},
 			),
-			crate::Event::BatchCompleted,
+			pallet_utility::Event::BatchCompleted,
 		];
-		assert_eq!(events(), expected);
+		assert_eq!(batch_events(), expected);
 	});
 }

@@ -17,9 +17,8 @@
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
-	construct_runtime,
-	parameter_types,
-	traits::{GenesisBuild, OnInitialize, OnFinalize},
+	construct_runtime, parameter_types,
+	traits::{GenesisBuild, OnFinalize, OnInitialize},
 };
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
@@ -35,7 +34,6 @@ pub type Balance = u128;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
- 
 
 construct_runtime!(
 	pub enum Test where
@@ -101,7 +99,6 @@ parameter_types! {
 
 impl Config for Test {
 	type Event = Event;
-	type Call = Call;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -133,6 +130,8 @@ fn genesis(
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
+
+pub type UtilityCall = pallet_utility::Call<Test>;
 
 pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 	let seed: u128 = 12345678901234567890123456789012;
@@ -179,6 +178,21 @@ pub(crate) fn events() -> Vec<super::Event<Test>> {
 		})
 		.collect::<Vec<_>>()
 }
+
+pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
+	System::events()
+		.into_iter()
+		.map(|r| r.event)
+		.filter_map(|e| {
+			if let Event::pallet_utility(inner) = e {
+				Some(inner)
+			} else {
+				None
+			}
+		})
+		.collect::<Vec<_>>()
+}
+
 pub(crate) fn roll_to(n: u64) {
 	while System::block_number() < n {
 		Crowdloan::on_finalize(System::block_number());
