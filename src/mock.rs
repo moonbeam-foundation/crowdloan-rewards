@@ -18,7 +18,7 @@
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{GenesisBuild, OnFinalize, OnInitialize},
+	traits::{OnFinalize, OnInitialize},
 };
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
@@ -43,7 +43,7 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Crowdloan: pallet_crowdloan_rewards::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Crowdloan: pallet_crowdloan_rewards::{Pallet, Call, Storage, Event<T>},
 		Utility: pallet_utility::{Pallet, Call, Storage, Event},
 	}
 );
@@ -110,24 +110,16 @@ impl pallet_utility::Config for Test {
 	type WeightInfo = ();
 }
 
-fn genesis(
-	assigned: Vec<([u8; 32], AccountId, u32)>,
-	unassigned: Vec<([u8; 32], u32)>,
-) -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::default()
+fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
+	let storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
 
-	pallet_crowdloan_rewards::GenesisConfig::<Test> {
-		associated: assigned,
-		unassociated: unassigned,
-		reward_ratio: 1,
-	}
-	.assimilate_storage(&mut storage)
-	.unwrap();
-
 	let mut ext = sp_io::TestExternalities::from(storage);
-	ext.execute_with(|| System::set_block_number(1));
+	ext.execute_with(|| {
+		Crowdloan::initialize_reward_vec(Origin::root(), contributions, 1).unwrap();
+		System::set_block_number(1)
+	});
 	ext
 }
 
@@ -150,19 +142,14 @@ pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 
 pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
 	let pairs = get_ed25519_pairs(3);
-	genesis(
-		vec![
-			// validators
-			([1u8; 32].into(), 1, 500),
-			([2u8; 32].into(), 2, 500),
-		],
-		vec![
-			// validators
-			(pairs[0].public().into(), 500),
-			(pairs[1].public().into(), 500),
-			(pairs[2].public().into(), 500),
-		],
-	)
+	genesis(vec![
+		// validators
+		([1u8; 32].into(), Some(1), 500),
+		([2u8; 32].into(), Some(2), 500),
+		(pairs[0].public().into(), None, 500),
+		(pairs[1].public().into(), None, 500),
+		(pairs[2].public().into(), None, 500),
+	])
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {

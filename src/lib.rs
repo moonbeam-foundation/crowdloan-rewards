@@ -42,19 +42,11 @@
 //!
 //! The pallet can learn about the crowdloan contributions in several ways.
 //!
-//! * **Associated at Genesis**
+//! * **Through the initialize_reward_vec extrinsic*
 //!
-//! The simplest way is that the native identity and contribution amount are configured at genesis.
+//! The simplest way is to call the initialize_reward_vec through a democracy proposal/sudo call.
 //! This makes sense in a scenario where the crowdloan took place entirely offchain.
-//!
-//! * **Unassociated at Genesis**
-//!
-//! When the crowdloan takes place on-relay-chain, contributors will not have a way to specify a native account
-//! into which they will receive rewards on the parachain. TODO that would be easy to add to the
-//! relay chain actually. In this case the genesis config contains information about the
-//! relay chain style contributor address, and the contribution amount. In this case the
-//! contributor is responsible for making a transaction that associates a native ID. The tx
-//! includes a signature by the relay chain identity over the native identity.
+//! This extrinsic initializes the associated and unassociated stoerage with the provided data
 //!
 //! * **ReadingRelayState**
 //!
@@ -62,7 +54,7 @@
 //! directly from the relay state. Blocked by https://github.com/paritytech/cumulus/issues/320 so
 //! I won't pursue it further right now. I can't decide whether that would really add security /
 //! trustlessness, or is just a sexy blockchain thing to do. Contributors can always audit the
-//! genesis block and make sure their contribution is in it, so in that sense reading relay state
+//! democracy proposal and make sure their contribution is in it, so in that sense reading relay state
 //! isn't necessary. But if a single contribution is left out, the rest of the contributors might
 //! not care enough to delay network launch. The little guy might get censored.
 
@@ -82,7 +74,6 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_support::traits::Currency;
 	use frame_system::pallet_prelude::*;
-	use log::warn;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::Saturating;
 	use sp_runtime::traits::Verify;
@@ -140,8 +131,11 @@ pub mod pallet {
 		/// This is inspired by Polkadot's claims pallet:
 		/// https://github.com/paritytech/polkadot/blob/master/runtime/common/src/claims.rs
 		///
-		/// This function and the entire concept of unassociated contributions may be obviated if
-		/// They will accept a memo filed in the Polkadot crowdloan pallet.
+		/// The contributor needs to issue an additional addmemo transaction if it wants to receive
+		/// the reward in a parachain native account. For the moment I will leave this function here
+		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
+		/// state of the relay chain, we should first check whether that memo field exists in the
+		/// contribution
 		#[pallet::weight(0)]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
@@ -341,72 +335,6 @@ pub mod pallet {
 	#[pallet::getter(fn unassociated_contributions)]
 	pub type UnassociatedContributions<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, RewardInfo<T>>;
-
-	// Design decision:
-	// Genesis config contributions are specified in relay-chain currency
-	// Conversion to reward currency happens when constructing genesis
-	// This pallets storages are all in terms of reward currency
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		/// Contributions that have a native account id associated already.
-		pub associated: Vec<(T::RelayChainAccountId, T::AccountId, u32)>,
-		/// Contributions that will need a native account id to be associated through an extrinsic.
-		pub unassociated: Vec<(T::RelayChainAccountId, u32)>,
-		/// The ratio of (reward tokens to be paid) / (relay chain funds contributed)
-		/// This is dead stupid simple using a u32. So the reward amount has to be an integer
-		/// multiple of the contribution amount. A better fixed-ratio solution would be
-		/// https://crates.parity.io/sp_arithmetic/fixed_point/struct.FixedU128.html
-		/// We could also do something fancy and non-linear if the need arises.
-		pub reward_ratio: u32,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				associated: Vec::new(),
-				unassociated: Vec::new(),
-				reward_ratio: 1,
-			}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-			// Warn if no contributions (associated or not) are specified
-			if self.associated.is_empty() && self.unassociated.is_empty() {
-				warn!("Rewards: No contributions configured. Pallet will not be useable.")
-			}
-
-			// Initialize storage for associated contributions
-			self.associated
-				.iter()
-				.for_each(|(relay_account, native_account, contrib)| {
-					let reward_info = RewardInfo {
-						total_reward: BalanceOf::<T>::from(*contrib)
-							.saturating_mul(BalanceOf::<T>::from(self.reward_ratio)),
-						claimed_reward: 0u32.into(),
-						last_paid: 0u32.into(),
-					};
-					AccountsPayable::<T>::insert(native_account, reward_info);
-					ClaimedRelayChainIds::<T>::insert(relay_account, ());
-				});
-
-			// Initialize storage for UN-associated contributions
-			self.unassociated
-				.iter()
-				.for_each(|(relay_account, contrib)| {
-					let reward_info = RewardInfo {
-						total_reward: BalanceOf::<T>::from(*contrib)
-							.saturating_mul(BalanceOf::<T>::from(self.reward_ratio)),
-						claimed_reward: 0u32.into(),
-						last_paid: 0u32.into(),
-					};
-					UnassociatedContributions::<T>::insert(relay_account, reward_info);
-				});
-		}
-	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
