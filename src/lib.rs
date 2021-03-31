@@ -70,15 +70,12 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
-	use frame_support::dispatch::fmt::Debug;
-	use frame_support::pallet_prelude::*;
-	use frame_support::traits::Currency;
+	use frame_support::{dispatch::fmt::Debug, pallet_prelude::*, traits::Currency};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::traits::Saturating;
-	use sp_runtime::traits::Verify;
+	use sp_runtime::traits::{Saturating, Verify};
 	use sp_runtime::{MultiSignature, SaturatedConversion};
-	use sp_std::convert::TryInto;
+	use sp_std::{convert::TryInto, vec::Vec};
 	/// The Author Filter pallet
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
@@ -296,11 +293,18 @@ pub mod pallet {
 				Error::<T>::CurrentLeasePeriodAlreadyInitialized
 			);
 			for (relay_account, native_account, contribution) in &contributions {
-				ensure!(
-					ClaimedRelayChainIds::<T>::get(&relay_account).is_none()
-						&& UnassociatedContributions::<T>::get(&relay_account).is_none(),
-					Error::<T>::AlreadyInitialized
-				);
+				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
+					|| UnassociatedContributions::<T>::get(&relay_account).is_some()
+				{
+					// Dont fail as this is supposed to be called with batch calls and we
+					// dont want to stall the rest of the contributions
+					Self::deposit_event(Event::ErrorWhileInitializing(
+						relay_account.clone(),
+						native_account.clone(),
+						*contribution,
+					));
+					continue;
+				}
 				let reward_info = RewardInfo {
 					total_reward: BalanceOf::<T>::from(*contribution)
 						.saturating_mul(BalanceOf::<T>::from(reward_ratio)),
@@ -327,8 +331,6 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
-		/// User trying to intialize an address that has already been initialized
-		AlreadyInitialized,
 		/// Current Lease Period has already been initialized
 		CurrentLeasePeriodAlreadyInitialized,
 		/// User trying to associate a native identity with a relay chain identity for posterior
@@ -373,5 +375,7 @@ pub mod pallet {
 		RewardsPaid(T::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
 		RewardAddressUpdated(T::AccountId, T::AccountId),
+		/// An error occurred when initializing the reward vector for a particular RelayChainAccount
+		ErrorWhileInitializing(T::RelayChainAccountId, Option<T::AccountId>, u32),
 	}
 }

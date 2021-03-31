@@ -16,18 +16,14 @@
 
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
-use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{OnFinalize, OnInitialize},
-};
+use frame_support::{construct_runtime, parameter_types};
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use sp_std::convert::From;
-use sp_std::convert::TryInto;
+use sp_std::convert::{From, TryInto};
 
 pub type AccountId = u64;
 pub type Balance = u128;
@@ -193,13 +189,6 @@ pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
 
 pub(crate) fn roll_to(n: u64) {
 	while System::block_number() < n {
-		Crowdloan::on_finalize(System::block_number());
-		Balances::on_finalize(System::block_number());
-		System::on_finalize(System::block_number());
 		System::set_block_number(System::block_number() + 1);
-		System::on_initialize(System::block_number());
-		Balances::on_initialize(System::block_number());
-		Crowdloan::on_initialize(System::block_number());
-		Utility::on_initialize(System::block_number());
 	}
 }
