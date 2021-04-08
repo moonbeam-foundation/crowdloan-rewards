@@ -66,6 +66,11 @@ pub use pallet::*;
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+extern crate quickcheck;
+#[cfg(test)]
+#[macro_use(quickcheck)]
+extern crate quickcheck_macros;
 
 #[pallet]
 pub mod pallet {

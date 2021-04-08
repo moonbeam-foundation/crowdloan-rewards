@@ -317,3 +317,51 @@ fn initialize_new_addresses_with_batch() {
 		assert_eq!(batch_events(), expected);
 	});
 }
+
+#[derive(Debug, Copy, Clone)]
+struct BlockNumber(u8);
+
+impl quickcheck::Arbitrary for BlockNumber {
+	fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+		let numbers: Vec<u8> = (1u8..255u8).collect();
+		let chosen_value = g.choose(&numbers).unwrap();
+		BlockNumber(*chosen_value)
+	}
+}
+
+#[quickcheck]
+fn paying_late_joiner_works_quickcheck(input: BlockNumber) {
+	let pairs = get_ed25519_pairs(3);
+	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
+	two_assigned_three_unassigned().execute_with(|| {
+		//
+		roll_to(input.0 as u64);
+		assert_ok!(Crowdloan::associate_native_identity(
+			Origin::signed(4),
+			3,
+			pairs[0].public().into(),
+			signature.clone()
+		));
+		let total_reward = Crowdloan::accounts_payable(&3).unwrap().total_reward;
+		let reward_per_block: u128 = total_reward / 8u128;
+		let expected_vested = if reward_per_block * (input.0 as u128) < total_reward {
+			reward_per_block * (input.0 as u128)
+		} else {
+			total_reward
+		};
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().last_paid,
+			input.0 as u64
+		);
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			expected_vested
+		);
+		let expected = vec![
+			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, total_reward),
+			crate::Event::RewardsPaid(3, expected_vested),
+		];
+		assert_eq!(events(), expected);
+	});
+}

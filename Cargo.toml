@@ -19,7 +19,9 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = fa
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 
-
+[dev-dependencies]
+quickcheck = "1.0.3"
+quickcheck_macros = "1"
 [features]
 default = ["std"]
 std = [
