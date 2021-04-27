@@ -160,6 +160,14 @@ pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
 	])
 }
 
+pub(crate) fn two_assigned_contributions_less_than_vesting() -> sp_io::TestExternalities {
+	genesis(vec![
+		// validators
+		([1u8; 32].into(), Some(1), 5),
+		([2u8; 32].into(), Some(2), 5),
+	])
+}
+
 pub(crate) fn events() -> Vec<super::Event<Test>> {
 	System::events()
 		.into_iter()

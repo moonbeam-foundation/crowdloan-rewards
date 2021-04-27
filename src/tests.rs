@@ -317,3 +317,19 @@ fn initialize_new_addresses_with_batch() {
 		assert_eq!(batch_events(), expected);
 	});
 }
+
+#[test]
+fn if_contribution_less_than_vesting_minimum_payable_should_be_one() {
+	two_assigned_contributions_less_than_vesting().execute_with(|| {
+		roll_to(6);
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().last_paid, 6u64);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 5);
+		roll_to(6);
+		assert_noop!(
+			Crowdloan::show_me_the_money(Origin::signed(1)),
+			Error::<Test>::RewardsAlreadyClaimed
+		);
+	});
+}

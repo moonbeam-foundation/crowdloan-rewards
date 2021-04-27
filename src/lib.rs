@@ -111,6 +111,7 @@ pub mod pallet {
 	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
+
 	/// Stores info about the rewards owed as well as how much has been vested so far.
 	/// For a primer on this kind of design, see the recipe on compounding interest
 	/// https://substrate.dev/recipes/fixed-point.html#continuously-compounding
@@ -191,7 +192,7 @@ pub mod pallet {
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 
-			// Calculate the veted amount on demand.
+			// Calculate the vested amount on demand.
 			let mut info =
 				AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
 			ensure!(
@@ -200,12 +201,18 @@ pub mod pallet {
 			);
 			let now = frame_system::Pallet::<T>::block_number();
 
-			let payable_per_block = info.total_reward
+			let mut payable_per_block = info.total_reward
 				/ T::VestingPeriod::get()
 					.saturated_into::<u128>()
 					.try_into()
 					.ok()
 					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
+
+			// Minimum payable amount should be one
+			if payable_per_block == 0u32.into() {
+				payable_per_block = 1u32.into();
+			}
+
 			let payable_period = now.saturating_sub(info.last_paid);
 
 			let pay_period_as_balance: BalanceOf<T> = payable_period
