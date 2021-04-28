@@ -89,6 +89,8 @@ pub mod pallet {
 		type DefaultNextInitialization: Get<Self::BlockNumber>;
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// The period after which the contribution storage can be initialized again
+		type MinimumContribution: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
 
@@ -198,6 +200,11 @@ pub mod pallet {
 			ensure!(
 				info.claimed_reward < info.total_reward,
 				Error::<T>::RewardsAlreadyClaimed
+			);
+
+			ensure!(
+				info.total_reward > T::MinimumContribution::get(),
+				Error::<T>::ContributionNotHighEnough
 			);
 			let now = frame_system::Pallet::<T>::block_number();
 
@@ -338,6 +345,8 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
+		/// The contribution is not high enough to be eligible for rewards
+		ContributionNotHighEnough,
 		/// Current Lease Period has already been initialized
 		CurrentLeasePeriodAlreadyInitialized,
 		/// User trying to associate a native identity with a relay chain identity for posterior

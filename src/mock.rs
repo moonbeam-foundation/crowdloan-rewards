@@ -94,12 +94,14 @@ parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
 	pub const TestLeasePeriod: u64 = 10;
 	pub const TestDefaultNextInitialization: u64 = 0;
+	pub const TestMinimumContribution: u128 = 0;
 }
 
 impl Config for Test {
 	type Event = Event;
 	type LeasePeriod = TestLeasePeriod;
 	type DefaultNextInitialization = TestDefaultNextInitialization;
+	type MinimumContribution = TestMinimumContribution;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
