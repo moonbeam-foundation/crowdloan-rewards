@@ -310,27 +310,35 @@ pub mod pallet {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
 					|| UnassociatedContributions::<T>::get(&relay_account).is_some()
 				{
-					// Dont fail as this is supposed to be called with batch calls and we
-					// dont want to stall the rest of the contributions
-					Self::deposit_event(Event::ErrorWhileInitializing(
+					// Dont fail as this is supposed to be called with batch calls and the
+					// rest of the contributions will indeed continue executing
+					Self::deposit_event(Event::AlreadyInitialized(
 						relay_account.clone(),
 						native_account.clone(),
 						*contribution,
 					));
-					continue;
-				}
-				let reward_info = RewardInfo {
-					total_reward: BalanceOf::<T>::from(*contribution)
-						.saturating_mul(BalanceOf::<T>::from(reward_ratio)),
-					claimed_reward: 0u32.into(),
-					last_paid: 0u32.into(),
-				};
-
-				if let Some(native_account) = native_account {
-					AccountsPayable::<T>::insert(native_account, reward_info);
-					ClaimedRelayChainIds::<T>::insert(relay_account, ());
+				} else if BalanceOf::<T>::from(*contribution) < T::MinimumContribution::get() {
+					// Dont fail as this is supposed to be called with batch calls and the
+					// rest of the contributions will indeed continue executing
+					Self::deposit_event(Event::NotEnoughContribution(
+						relay_account.clone(),
+						native_account.clone(),
+						*contribution,
+					));
 				} else {
-					UnassociatedContributions::<T>::insert(relay_account, reward_info);
+					let reward_info = RewardInfo {
+						total_reward: BalanceOf::<T>::from(*contribution)
+							.saturating_mul(BalanceOf::<T>::from(reward_ratio)),
+						claimed_reward: 0u32.into(),
+						last_paid: 0u32.into(),
+					};
+
+					if let Some(native_account) = native_account {
+						AccountsPayable::<T>::insert(native_account, reward_info);
+						ClaimedRelayChainIds::<T>::insert(relay_account, ());
+					} else {
+						UnassociatedContributions::<T>::insert(relay_account, reward_info);
+					}
 				}
 			}
 			if index + contributions.len() as u32 == limit {
@@ -383,6 +391,10 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// Tried to initialize an address already initialized. Continue without adding it
+		AlreadyInitialized(T::RelayChainAccountId, Option<T::AccountId>, u32),
+		/// Tried to initialize an address whose contribution was below the minimum
+		NotEnoughContribution(T::RelayChainAccountId, Option<T::AccountId>, u32),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
 		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),
@@ -391,7 +403,5 @@ pub mod pallet {
 		RewardsPaid(T::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
 		RewardAddressUpdated(T::AccountId, T::AccountId),
-		/// An error occurred when initializing the reward vector for a particular RelayChainAccount
-		ErrorWhileInitializing(T::RelayChainAccountId, Option<T::AccountId>, u32),
 	}
 }

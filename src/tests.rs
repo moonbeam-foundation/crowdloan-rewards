@@ -245,14 +245,17 @@ fn initialize_new_addresses() {
 			],
 			1,
 			0,
-			4
+			5
 		));
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
-			vec![([6u8; 32].into(), Some(6), 500)],
+			vec![
+				([6u8; 32].into(), Some(6), 500),
+				([7u8; 32].into(), Some(7), 1)
+			],
 			1,
 			3,
-			4
+			5
 		));
 		assert_noop!(
 			Crowdloan::initialize_reward_vec(
@@ -265,11 +268,10 @@ fn initialize_new_addresses() {
 			Error::<Test>::CurrentLeasePeriodAlreadyInitialized
 		);
 		assert_eq!(Crowdloan::next_initialization(), 20);
-		let expected = vec![crate::Event::ErrorWhileInitializing(
-			[1u8; 32],
-			Some(1),
-			500,
-		)];
+		let expected = vec![
+			crate::Event::AlreadyInitialized([1u8; 32], Some(1), 500),
+			crate::Event::NotEnoughContribution([7u8; 32], Some(7), 1),
+		];
 		assert_eq!(events(), expected);
 	});
 }

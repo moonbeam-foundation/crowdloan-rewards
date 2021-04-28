@@ -94,7 +94,7 @@ parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
 	pub const TestLeasePeriod: u64 = 10;
 	pub const TestDefaultNextInitialization: u64 = 0;
-	pub const TestMinimumContribution: u128 = 0;
+	pub const TestMinimumContribution: u128 = 2;
 }
 
 impl Config for Test {
