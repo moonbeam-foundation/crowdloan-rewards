@@ -2,12 +2,13 @@
 
 use crate::{BalanceOf, Call, Config, Pallet};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelist_account};
-use frame_support::traits::{Currency, Get, ReservableCurrency}; // OnInitialize, OnFinalize
+use sp_runtime::traits::One;
+use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_system::RawOrigin;
-
+use sp_core::crypto::AccountId32;
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
-    <<T as Config>::MinCollatorStk as Get<BalanceOf<T>>>::get()
+    <<T as Config>::MinimumContribution as Get<BalanceOf<T>>>::get()
 }
 
 /// Create a funded user.
@@ -20,43 +21,63 @@ fn create_funded_user<T: Config>(
     let user = account(string, n, SEED);
     let default_balance = default_balance::<T>();
     let total = default_balance + extra;
-    T::Currency::make_free_balance_be(&user, total);
-    T::Currency::issue(total);
+    T::RewardCurrency::make_free_balance_be(&user, total);
+    T::RewardCurrency::issue(total);
     user
 }
 
 /// Create a Contributor.
-fn create_contributor<T: Config>(
-    string: &'static str,
-    relayChainAccount: [u32; 32],
-    n: u32,
-    contribution: u32,
+fn create_contributors<T: Config>(
+    contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, u32)>,
     reward_ratio: u32,
-    extra: BalanceOf<T>,
-) -> Result<T::AccountId, &'static str> {
-    const SEED: u32 = 0;
-    let user = create_funded_user::<T>(string, n, extra);
+) -> Result<(), &'static str> {
     Pallet::<T>::initialize_reward_vec(
-        RawOrigin::Root,
-        vec![relayChainAccount.into(), Some(user.clone()), contribution],
+        RawOrigin::Root.into(),
+        contributors.clone(),
         reward_ratio,
         0,
-        1
+        contributors.len() as u32
     )?;
-    Ok(user)
+    Ok(())
 }
 
 const USER_SEED: u32 = 999666;
+const MAX_USERS: u32 = 10;
 
 benchmarks! {
-    initialize_vec_reward {
+    initialize_reward_vec {
         let caller: T::AccountId = create_funded_user::<T>("caller", USER_SEED, 0u32.into());
-        let contributions =  vec![relayChainAccount.into(), Some(user), contribution];
+        let relay_chain_account: AccountId32 = [2u8; 32].into();
+        let user: T::AccountId = create_funded_user::<T>("caller", USER_SEED-1, 0u32.into());
+        let contribution = 100;
+        let contributions =  vec![(relay_chain_account.into(), Some(user.clone()), contribution)];
         let reward_ratio = 1;
 		whitelist_account!(caller);
     }:  _(RawOrigin::Root, contributions, reward_ratio, 0, 1)
 	verify {
-		assert!(Pallet::<T>::accounts_payable(&caller));
+		assert!(Pallet::<T>::accounts_payable(&user).is_some());
+	}
+
+	show_me_the_money {
+	    let mut contribution_vec = Vec::new();
+	    for i in 0..MAX_USERS{
+			let seed = MAX_USERS - i;
+			let mut account: [u8; 32] = [0u8; 32];
+			let seed_as_slice = seed.to_be_bytes();
+			for j in 0..seed_as_slice.len() {
+			    account[j] = seed_as_slice[j]
+			}
+			let relay_chain_account: AccountId32 = account.into();
+            let user = create_funded_user::<T>("user", seed, 0u32.into());
+            contribution_vec.push((relay_chain_account.into(), Some(user.clone()), 100));
+			whitelist_account!(user);
+		}
+        create_contributors::<T>(contribution_vec, 1)?;
+        let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 0u32.into());
+
+    }: _(RawOrigin::Signed(caller.clone()))
+	verify {
+	    assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, T::BlockNumber::one());
 	}
 }
 
@@ -75,9 +96,15 @@ mod tests {
     }
 
     #[test]
-    fn bench_join_candidates() {
+    fn bench_init_reward_vec() {
         new_test_ext().execute_with(|| {
-            assert_ok!(test_benchmark_initialize_vec_reward::<Test>());
+            assert_ok!(test_benchmark_initialize_reward_vec::<Test>());
+        });
+    }
+    #[test]
+    fn bench_show_me_the_money() {
+        new_test_ext().execute_with(|| {
+            assert_ok!(test_benchmark_show_me_the_money::<Test>());
         });
     }
 }

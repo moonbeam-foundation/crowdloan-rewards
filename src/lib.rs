@@ -105,7 +105,8 @@ pub mod pallet {
 			+ Ord
 			+ Default
 			+ Debug
-			+ Into<AccountId32>;
+			+ Into<AccountId32>
+			+ From<AccountId32>;
 
 		/// The total vesting period. Ideally this should be less than the lease period to ensure
 		/// there is no overlap between contributors from two different auctions
