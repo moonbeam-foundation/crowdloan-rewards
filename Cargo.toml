@@ -18,6 +18,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false, optional = true }
 
 
 [features]
@@ -34,4 +35,7 @@ std = [
     "log/std",
     "sp-std/std",
     "sp-io/std"
+]
+runtime-benchmarks = [
+	"frame-benchmarking",
 ]

@@ -62,6 +62,8 @@
 
 use frame_support::pallet;
 pub use pallet::*;
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+mod benchmarks;
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
@@ -108,7 +110,7 @@ pub mod pallet {
 		type VestingPeriod: Get<Self::BlockNumber>;
 	}
 
-	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
+	pub type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 	/// Stores info about the rewards owed as well as how much has been vested so far.
