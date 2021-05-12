@@ -5,6 +5,7 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whiteli
 use sp_runtime::traits::One;
 use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_system::RawOrigin;
+use frame_support::traits::OnFinalize;
 use sp_core::crypto::AccountId32;
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -78,6 +79,32 @@ benchmarks! {
     }: _(RawOrigin::Signed(caller.clone()))
 	verify {
 	    assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, T::BlockNumber::one());
+	}
+
+	on_finalize_pay_contributors {
+	    let mut contribution_vec = Vec::new();
+
+
+	    for i in 0..MAX_USERS{
+			let seed = MAX_USERS - i;
+			let mut account: [u8; 32] = [0u8; 32];
+			let seed_as_slice = seed.to_be_bytes();
+			for j in 0..seed_as_slice.len() {
+			    account[j] = seed_as_slice[j]
+			}
+			let relay_chain_account: AccountId32 = account.into();
+            let user = create_funded_user::<T>("user", seed, 0u32.into());
+            contribution_vec.push((relay_chain_account.into(), Some(user.clone()), 100));
+			whitelist_account!(user);
+		}
+
+        create_contributors::<T>(contribution_vec, 1)?;
+        let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 0u32.into());
+    }: {
+	    Pallet::<T>::on_finalize(T::BlockNumber::one());
+	}
+	verify {
+	  assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, T::BlockNumber::one());
 	}
 }
 

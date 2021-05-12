@@ -16,7 +16,7 @@
 
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, parameter_types, traits::{GenesisBuild, OnFinalize, OnInitialize}};
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
@@ -95,12 +95,14 @@ parameter_types! {
 	pub const TestLeasePeriod: u64 = 10;
 	pub const TestDefaultNextInitialization: u64 = 0;
 	pub const TestMinimumContribution: u128 = 0;
+	pub const TestDefaultBlocksPerRound: u32 = 500;
 }
 
 impl Config for Test {
 	type Event = Event;
 	type LeasePeriod = TestLeasePeriod;
 	type DefaultNextInitialization = TestDefaultNextInitialization;
+	type DefaultBlocksPerRound = TestDefaultBlocksPerRound;
 	type MinimumContribution = TestMinimumContribution;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
@@ -114,9 +116,16 @@ impl pallet_utility::Config for Test {
 }
 
 fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
+	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
+	pallet_crowdloan_rewards::GenesisConfig::<Test> {
+		associated: vec![],
+		unassociated: vec![],
+		reward_ratio: 0
+	}
+		.assimilate_storage(&mut storage)
+		.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::from(storage);
 	ext.execute_with(|| {
@@ -192,6 +201,12 @@ pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
 
 pub(crate) fn roll_to(n: u64) {
 	while System::block_number() < n {
+		Crowdloan::on_finalize(System::block_number());
+		Balances::on_finalize(System::block_number());
+		System::on_finalize(System::block_number());
 		System::set_block_number(System::block_number() + 1);
+		System::on_initialize(System::block_number());
+		Balances::on_initialize(System::block_number());
+		Crowdloan::on_initialize(System::block_number());
 	}
 }

@@ -317,3 +317,15 @@ fn initialize_new_addresses_with_batch() {
 		assert_eq!(batch_events(), expected);
 	});
 }
+
+#[test]
+fn automatic_paying_works() {
+	two_assigned_three_unassigned().execute_with(|| {
+		// 1 is payable
+		assert!(Crowdloan::accounts_payable(&1).is_some());
+		roll_to(502);
+
+		//assert_eq!(batch_events(), [pallet_utility::Event::BatchCompleted]);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().last_paid, 500u64);
+	});
+}

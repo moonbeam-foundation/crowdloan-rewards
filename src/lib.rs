@@ -78,6 +78,7 @@ pub mod pallet {
 	use sp_runtime::traits::{Saturating, Verify};
 	use sp_runtime::{MultiSignature, SaturatedConversion};
 	use sp_std::{convert::TryInto, vec::Vec};
+
 	/// The Author Filter pallet
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
@@ -89,6 +90,8 @@ pub mod pallet {
 		type LeasePeriod: Get<Self::BlockNumber>;
 		/// When we allow for first initialization
 		type DefaultNextInitialization: Get<Self::BlockNumber>;
+		/// Default number of blocks per round at genesis
+		type DefaultBlocksPerRound: Get<u32>;
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The period after which the contribution storage can be initialized again
@@ -112,10 +115,60 @@ pub mod pallet {
 		/// there is no overlap between contributors from two different auctions
 		type VestingPeriod: Get<Self::BlockNumber>;
 	}
+	type RoundIndex = u32;
 
 	pub type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
+
+	#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+	/// The current round index and transition information
+	pub struct RoundInfo<BlockNumber> {
+		/// Current round index
+		pub current: RoundIndex,
+		/// The first block of the current round
+		pub first: BlockNumber,
+		/// The length of the current round in number of blocks
+		pub length: u32,
+	}
+	impl<
+		B: Copy
+		+ sp_std::ops::Add<Output = B>
+		+ sp_std::ops::Sub<Output = B>
+		+ From<u32>
+		+ PartialOrd,
+	> RoundInfo<B>
+	{
+		pub fn new(current: RoundIndex, first: B, length: u32) -> RoundInfo<B> {
+			RoundInfo {
+				current,
+				first,
+				length,
+			}
+		}
+		/// Check if the round should be updated
+		pub fn should_update(&self, now: B) -> bool {
+			now - self.first >= self.length.into()
+		}
+		/// New round
+		pub fn update(&mut self, now: B) {
+			self.current += 1u32;
+			self.first = now;
+		}
+	}
+	impl<
+		B: Copy
+		+ sp_std::ops::Add<Output = B>
+		+ sp_std::ops::Sub<Output = B>
+		+ From<u32>
+		+ PartialOrd,
+	> Default for RoundInfo<B>
+	{
+		fn default() -> RoundInfo<B> {
+			RoundInfo::new(0u32, 0u32.into(), 1u32.into())
+		}
+	}
+
 	/// Stores info about the rewards owed as well as how much has been vested so far.
 	/// For a primer on this kind of design, see the recipe on compounding interest
 	/// https://substrate.dev/recipes/fixed-point.html#continuously-compounding
@@ -126,9 +179,19 @@ pub mod pallet {
 		pub last_paid: T::BlockNumber,
 	}
 
-	// No hooks
 	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_finalize(n: T::BlockNumber) {
+			let mut round = <Round<T>>::get();
+			if round.should_update(n) {
+				// mutate round
+				round.update(n);
+				// pay all stakers for T::BondDuration rounds ago
+				Self::pay_contributors(n);
+				<Round<T>>::put(round);
+			}
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -194,9 +257,10 @@ pub mod pallet {
 		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(0)]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+
 			let payee = ensure_signed(origin)?;
 
-			// Calculate the veted amount on demand.
+			// Calculate the vested amount on demand.
 			let mut info =
 				AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
 			ensure!(
@@ -208,6 +272,7 @@ pub mod pallet {
 				info.total_reward > T::MinimumContribution::get(),
 				Error::<T>::ContributionNotHighEnough
 			);
+
 			let now = frame_system::Pallet::<T>::block_number();
 
 			let payable_per_block = info.total_reward
@@ -282,6 +347,7 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
+
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
 		/// This function ensures that the current block number>=NextInitialization
@@ -336,6 +402,50 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: Config> Pallet<T> {
+		fn pay_contributors(now: T::BlockNumber) {
+			let enumerated: Vec<_> = AccountsPayable::<T>::iter().collect();
+			for (payee, mut info) in enumerated {
+				let payable_per_block = info.total_reward
+					/ T::VestingPeriod::get()
+					.saturated_into::<u128>()
+					.try_into()
+					.ok()
+					.unwrap(); //TODO safe math;
+
+				let payable_period = now.saturating_sub(info.last_paid);
+				let pay_period_as_balance: BalanceOf<T> = payable_period
+					.saturated_into::<u128>()
+					.try_into()
+					.ok()
+					.unwrap();
+
+				// If the period is bigger than whats missing to pay, then return whats missing to pay
+				let payable_amount = if pay_period_as_balance.saturating_mul(payable_per_block)
+					< info.total_reward.saturating_sub(info.claimed_reward)
+				{
+					pay_period_as_balance.saturating_mul(payable_per_block)
+				} else {
+					info.total_reward.saturating_sub(info.claimed_reward)
+				};
+
+				// Update the stored info
+				info.last_paid = now;
+				info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
+				AccountsPayable::<T>::insert(&payee, &info);
+
+				// Make the payment
+				// TODO where are these reward funds coming from? Currently I'm just minting them right here.
+				// 1. We could have an associated type to absorb the imbalance.
+				// 2. We could have this pallet control a pot of funds, and initialize it at genesis.
+				T::RewardCurrency::deposit_creating(&payee, payable_amount);
+
+				// Emit event
+				Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
+			}
+		}
+	}
+
 	#[pallet::error]
 	pub enum Error<T> {
 		/// User trying to associate a native identity with a relay chain identity for posterior
@@ -359,6 +469,40 @@ pub mod pallet {
 		WrongConversionU128ToBalance,
 	}
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		/// Contributions that have a native account id associated already.
+		pub associated: Vec<(T::RelayChainAccountId, T::AccountId, u32)>,
+		/// Contributions that will need a native account id to be associated through an extrinsic.
+		pub unassociated: Vec<(T::RelayChainAccountId, u32)>,
+		/// The ratio of (reward tokens to be paid) / (relay chain funds contributed)
+		/// This is dead stupid simple using a u32. So the reward amount has to be an integer
+		/// multiple of the contribution amount. A better fixed-ratio solution would be
+		/// https://crates.parity.io/sp_arithmetic/fixed_point/struct.FixedU128.html
+		/// We could also do something fancy and non-linear if the need arises.
+		pub reward_ratio: u32,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self {
+				associated: Vec::new(),
+				unassociated: Vec::new(),
+				reward_ratio: 1,
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			let round: RoundInfo<T::BlockNumber> =
+				RoundInfo::new(1u32, 0u32.into(), T::DefaultBlocksPerRound::get());
+			<Round<T>>::put(round);
+		}
+	}
+
 	#[pallet::storage]
 	#[pallet::getter(fn accounts_payable)]
 	pub type AccountsPayable<T: Config> =
@@ -375,6 +519,11 @@ pub mod pallet {
 	#[pallet::getter(fn next_initialization)]
 	pub type NextInitialization<T: Config> =
 		StorageValue<_, T::BlockNumber, ValueQuery, T::DefaultNextInitialization>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn round)]
+	/// Current round index and next round scheduled transition
+	type Round<T: Config> = StorageValue<_, RoundInfo<T::BlockNumber>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
