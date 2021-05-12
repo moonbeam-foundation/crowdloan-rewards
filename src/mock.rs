@@ -16,7 +16,10 @@
 
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
-use frame_support::{construct_runtime, parameter_types, traits::{GenesisBuild, OnFinalize, OnInitialize}};
+use frame_support::{
+	construct_runtime, parameter_types,
+	traits::{GenesisBuild, OnFinalize, OnInitialize},
+};
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
@@ -122,10 +125,10 @@ fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::Tes
 	pallet_crowdloan_rewards::GenesisConfig::<Test> {
 		associated: vec![],
 		unassociated: vec![],
-		reward_ratio: 0
+		reward_ratio: 0,
 	}
-		.assimilate_storage(&mut storage)
-		.expect("Pallet balances storage can be assimilated");
+	.assimilate_storage(&mut storage)
+	.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::from(storage);
 	ext.execute_with(|| {

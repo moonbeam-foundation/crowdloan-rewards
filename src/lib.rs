@@ -132,12 +132,12 @@ pub mod pallet {
 		pub length: u32,
 	}
 	impl<
-		B: Copy
-		+ sp_std::ops::Add<Output = B>
-		+ sp_std::ops::Sub<Output = B>
-		+ From<u32>
-		+ PartialOrd,
-	> RoundInfo<B>
+			B: Copy
+				+ sp_std::ops::Add<Output = B>
+				+ sp_std::ops::Sub<Output = B>
+				+ From<u32>
+				+ PartialOrd,
+		> RoundInfo<B>
 	{
 		pub fn new(current: RoundIndex, first: B, length: u32) -> RoundInfo<B> {
 			RoundInfo {
@@ -157,12 +157,12 @@ pub mod pallet {
 		}
 	}
 	impl<
-		B: Copy
-		+ sp_std::ops::Add<Output = B>
-		+ sp_std::ops::Sub<Output = B>
-		+ From<u32>
-		+ PartialOrd,
-	> Default for RoundInfo<B>
+			B: Copy
+				+ sp_std::ops::Add<Output = B>
+				+ sp_std::ops::Sub<Output = B>
+				+ From<u32>
+				+ PartialOrd,
+		> Default for RoundInfo<B>
 	{
 		fn default() -> RoundInfo<B> {
 			RoundInfo::new(0u32, 0u32.into(), 1u32.into())
@@ -257,7 +257,6 @@ pub mod pallet {
 		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(0)]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-
 			let payee = ensure_signed(origin)?;
 
 			// Calculate the vested amount on demand.
@@ -347,7 +346,6 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
 		/// This function ensures that the current block number>=NextInitialization
@@ -408,10 +406,10 @@ pub mod pallet {
 			for (payee, mut info) in enumerated {
 				let payable_per_block = info.total_reward
 					/ T::VestingPeriod::get()
-					.saturated_into::<u128>()
-					.try_into()
-					.ok()
-					.unwrap(); //TODO safe math;
+						.saturated_into::<u128>()
+						.try_into()
+						.ok()
+						.unwrap(); //TODO safe math;
 
 				let payable_period = now.saturating_sub(info.last_paid);
 				let pay_period_as_balance: BalanceOf<T> = payable_period
