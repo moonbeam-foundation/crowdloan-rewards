@@ -134,6 +134,12 @@ mod tests {
             assert_ok!(test_benchmark_show_me_the_money::<Test>());
         });
     }
+    #[test]
+    fn bench_on_finalize_pay_contributors() {
+        new_test_ext().execute_with(|| {
+            assert_ok!(test_benchmark_on_finalize_pay_contributors::<Test>());
+        });
+    }
 }
 
 impl_benchmark_test_suite!(
