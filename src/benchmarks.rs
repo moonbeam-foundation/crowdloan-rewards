@@ -7,6 +7,8 @@ use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_system::RawOrigin;
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::One;
+use sp_std::vec;
+use sp_std::vec::Vec;
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
 	<<T as Config>::MinimumContribution as Get<BalanceOf<T>>>::get()
