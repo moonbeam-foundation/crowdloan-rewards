@@ -27,6 +27,7 @@ std = [
     "pallet-balances/std",
     "parity-scale-codec/std",
     "pallet-utility/std",
+    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
     "sp-core/std",
