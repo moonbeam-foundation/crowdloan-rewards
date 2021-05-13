@@ -45,7 +45,7 @@ fn create_contributors<T: Config>(
 }
 
 const USER_SEED: u32 = 999666;
-const MAX_USERS: u32 = 10;
+const MAX_USERS: u32 = 100;
 
 benchmarks! {
 	initialize_reward_vec {
@@ -78,7 +78,7 @@ benchmarks! {
 		create_contributors::<T>(contribution_vec, 1)?;
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 0u32.into());
 
-	}: _(RawOrigin::Signed(caller.clone()))
+	}:  _(RawOrigin::Signed(caller.clone()))
 	verify {
 		assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, T::BlockNumber::one());
 	}
