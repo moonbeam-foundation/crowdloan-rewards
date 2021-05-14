@@ -75,7 +75,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{Saturating, Verify};
-	use sp_runtime::{MultiSignature, SaturatedConversion};
+	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
 	use sp_std::{convert::TryInto, vec::Vec};
 
 	/// The Author Filter pallet
@@ -89,6 +89,8 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
+		/// Commission due to collators, set at genesis
+		type InitializationPayment: Get<Perbill>;
 		/// The account from which payments will be performed
 		type PalletAccountId: Get<Self::AccountId>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
@@ -310,10 +312,27 @@ pub mod pallet {
 					));
 					continue;
 				}
+
+				let total_payment = BalanceOf::<T>::from(*contribution)
+					.saturating_mul(BalanceOf::<T>::from(reward_ratio));
+
+				// If we have a native_account, we make the payment
+				let initial_payment = if let Some(native_account) = native_account {
+					let first_payment = T::InitializationPayment::get() * total_payment;
+					T::RewardCurrency::transfer(
+						&T::PalletAccountId::get(),
+						&native_account,
+						first_payment,
+						KeepAlive,
+					)?;
+					first_payment
+				} else {
+					0u32.into()
+				};
+
 				let reward_info = RewardInfo {
-					total_reward: BalanceOf::<T>::from(*contribution)
-						.saturating_mul(BalanceOf::<T>::from(reward_ratio)),
-					claimed_reward: 0u32.into(),
+					total_reward: total_payment,
+					claimed_reward: initial_payment,
 					last_paid: 0u32.into(),
 				};
 

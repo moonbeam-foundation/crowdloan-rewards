@@ -94,11 +94,13 @@ parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
 	pub const TestPalletAccountId: AccountId = 100;
 	pub const TestInitialized: bool = false;
+	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
 
 impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
+	type InitializationPayment = TestInitializationPayment;
 	type PalletAccountId = TestPalletAccountId;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
