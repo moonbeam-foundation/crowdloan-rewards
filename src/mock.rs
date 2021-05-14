@@ -92,14 +92,14 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
-	pub const TestLeasePeriod: u64 = 10;
-	pub const TestDefaultNextInitialization: u64 = 0;
+	pub const TestPalletAccountId: AccountId = 100;
 	pub const TestInitialized: bool = false;
 }
 
 impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
+	type PalletAccountId = TestPalletAccountId;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -112,9 +112,17 @@ impl pallet_utility::Config for Test {
 }
 
 fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
+	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
+
+	// AccountId paying the rewards
+	let balances_vec = vec![(TestPalletAccountId::get(), 1000000)];
+	pallet_balances::GenesisConfig::<Test> {
+		balances: balances_vec,
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::from(storage);
 	ext.execute_with(|| {

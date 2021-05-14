@@ -70,12 +70,14 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
+	use frame_support::traits::ExistenceRequirement::KeepAlive;
 	use frame_support::{dispatch::fmt::Debug, pallet_prelude::*, traits::Currency};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{Saturating, Verify};
 	use sp_runtime::{MultiSignature, SaturatedConversion};
 	use sp_std::{convert::TryInto, vec::Vec};
+
 	/// The Author Filter pallet
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
@@ -87,6 +89,8 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
+		/// The account from which payments will be performed
+		type PalletAccountId: Get<Self::AccountId>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
 		// TODO What trait bounds do I need here? I think concretely we would
@@ -229,7 +233,14 @@ pub mod pallet {
 			// TODO where are these reward funds coming from? Currently I'm just minting them right here.
 			// 1. We could have an associated type to absorb the imbalance.
 			// 2. We could have this pallet control a pot of funds, and initialize it at genesis.
-			T::RewardCurrency::deposit_creating(&payee, payable_amount);
+			T::RewardCurrency::transfer(
+				&T::PalletAccountId::get(),
+				&payee,
+				payable_amount,
+				KeepAlive,
+			)?;
+
+			//	T::RewardCurrency::deposit_creating(&payee, payable_amount);
 
 			// Emit event
 			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
