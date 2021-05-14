@@ -180,6 +180,11 @@ pub mod pallet {
 				KeepAlive,
 			)?;
 
+			Self::deposit_event(Event::InitialPaymentMade(
+				reward_account.clone(),
+				first_payment,
+			));
+
 			reward_info.claimed_reward = first_payment;
 
 			// Insert on payable
@@ -312,8 +317,11 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			//let now = frame_system::Pallet::<T>::block_number();
-			let next_init = <Initialized<T>>::get();
-			ensure!(next_init == false, Error::<T>::RewardVecAlreadyInitialized,);
+			let initialized = <Initialized<T>>::get();
+			ensure!(
+				initialized == false,
+				Error::<T>::RewardVecAlreadyInitialized
+			);
 			for (relay_account, native_account, contribution) in &contributions {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
 					|| UnassociatedContributions::<T>::get(&relay_account).is_some()
@@ -340,6 +348,10 @@ pub mod pallet {
 						first_payment,
 						KeepAlive,
 					)?;
+					Self::deposit_event(Event::InitialPaymentMade(
+						native_account.clone(),
+						first_payment,
+					));
 					first_payment
 				} else {
 					0u32.into()
@@ -405,6 +417,8 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// The initial payment of InitializationPayment % was paid
+		InitialPaymentMade(T::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
 		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),

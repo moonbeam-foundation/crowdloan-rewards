@@ -161,18 +161,6 @@ pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 	pairs
 }
 
-pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
-	let pairs = get_ed25519_pairs(3);
-	genesis(vec![
-		// validators
-		([1u8; 32].into(), Some(1), 500),
-		([2u8; 32].into(), Some(2), 500),
-		(pairs[0].public().into(), None, 500),
-		(pairs[1].public().into(), None, 500),
-		(pairs[2].public().into(), None, 500),
-	])
-}
-
 pub(crate) fn empty() -> sp_io::TestExternalities {
 	genesis(vec![])
 }

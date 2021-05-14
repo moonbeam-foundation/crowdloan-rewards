@@ -25,9 +25,23 @@ use sp_runtime::MultiSignature;
 
 #[test]
 fn geneses() {
-	let pairs = get_ed25519_pairs(3);
-	two_assigned_three_unassigned().execute_with(|| {
+	empty().execute_with(|| {
 		assert!(System::events().is_empty());
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
 		// accounts_payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		assert!(Crowdloan::accounts_payable(&2).is_some());
@@ -54,7 +68,22 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
-	two_assigned_three_unassigned().execute_with(|| {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
 		// 4 is not payable first
 		assert!(Crowdloan::accounts_payable(&3).is_none());
 		roll_to(4);
@@ -90,18 +119,34 @@ fn proving_assignation_works() {
 		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_some());
 
-		let expected = vec![crate::Event::NativeIdentityAssociated(
-			pairs[0].public().into(),
-			3,
-			500,
-		)];
+		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::InitialPaymentMade(3, 100),
+			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
+		];
 		assert_eq!(events(), expected);
 	});
 }
 
 #[test]
 fn paying_works() {
-	two_assigned_three_unassigned().execute_with(|| {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(4);
@@ -134,6 +179,8 @@ fn paying_works() {
 		);
 
 		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::RewardsPaid(1, 200),
 			crate::Event::RewardsPaid(1, 50),
 			crate::Event::RewardsPaid(1, 50),
@@ -148,8 +195,22 @@ fn paying_works() {
 fn paying_late_joiner_works() {
 	let pairs = get_ed25519_pairs(3);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
-	two_assigned_three_unassigned().execute_with(|| {
-		//
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
 		roll_to(12);
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
@@ -161,6 +222,9 @@ fn paying_late_joiner_works() {
 		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().last_paid, 12u64);
 		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().claimed_reward, 500);
 		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::InitialPaymentMade(3, 100),
 			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
 			crate::Event::RewardsPaid(3, 400),
 		];
@@ -170,7 +234,23 @@ fn paying_late_joiner_works() {
 
 #[test]
 fn update_address_works() {
-	two_assigned_three_unassigned().execute_with(|| {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
+
 		roll_to(4);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_noop!(
@@ -184,7 +264,10 @@ fn update_address_works() {
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(8)));
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().last_paid, 6u64);
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 400);
+		// The initial payment is not
 		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::RewardsPaid(1, 200),
 			crate::Event::RewardAddressUpdated(1, 8),
 			crate::Event::RewardsPaid(8, 100),
@@ -195,7 +278,23 @@ fn update_address_works() {
 
 #[test]
 fn update_address_with_existing_address_works() {
-	two_assigned_three_unassigned().execute_with(|| {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
+
 		roll_to(4);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(2)));
@@ -211,6 +310,8 @@ fn update_address_with_existing_address_works() {
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().last_paid, 6u64);
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 800);
 		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::RewardsPaid(1, 200),
 			crate::Event::RewardsPaid(2, 200),
 			crate::Event::RewardAddressUpdated(1, 2),
@@ -222,7 +323,25 @@ fn update_address_with_existing_address_works() {
 
 #[test]
 fn initialize_new_addresses() {
-	two_assigned_three_unassigned().execute_with(|| {
+	empty().execute_with(|| {
+		roll_to(2);
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
+		assert_eq!(Crowdloan::initialized(), true);
+
 		roll_to(4);
 		assert_noop!(
 			Crowdloan::initialize_reward_vec(
