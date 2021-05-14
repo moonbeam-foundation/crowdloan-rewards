@@ -232,59 +232,14 @@ fn initialize_new_addresses() {
 				0,
 				1
 			),
-			Error::<Test>::CurrentLeasePeriodAlreadyInitialized
+			Error::<Test>::RewardVecAlreadyInitialized,
 		);
-		assert_eq!(Crowdloan::next_initialization(), 10);
-		roll_to(10);
-		assert_ok!(Crowdloan::initialize_reward_vec(
-			Origin::root(),
-			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([4u8; 32].into(), Some(4), 500),
-				([5u8; 32].into(), None, 500)
-			],
-			1,
-			0,
-			4
-		));
-		assert_ok!(Crowdloan::initialize_reward_vec(
-			Origin::root(),
-			vec![([6u8; 32].into(), Some(6), 500)],
-			1,
-			3,
-			4
-		));
-		assert_noop!(
-			Crowdloan::initialize_reward_vec(
-				Origin::root(),
-				vec![([7u8; 32].into(), Some(7), 500)],
-				1,
-				0,
-				1
-			),
-			Error::<Test>::CurrentLeasePeriodAlreadyInitialized
-		);
-		assert_eq!(Crowdloan::next_initialization(), 20);
-		let expected = vec![crate::Event::ErrorWhileInitializing(
-			[1u8; 32],
-			Some(1),
-			500,
-		)];
-		assert_eq!(events(), expected);
 	});
 }
 
 #[test]
 fn initialize_new_addresses_with_batch() {
-	two_assigned_three_unassigned().execute_with(|| {
-		// Batch calls always succeed. We just need to check the inner event
-		assert_ok!(
-			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
-				crate::Call::initialize_reward_vec(vec![([4u8; 32].into(), Some(3), 500)], 1, 0, 1)
-			)]))
-			.dispatch(Origin::root())
-		);
-
+	empty().execute_with(|| {
 		// This time should succeed trully
 		roll_to(10);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch(vec![
@@ -303,16 +258,24 @@ fn initialize_new_addresses_with_batch() {
 		]))
 		.dispatch(Origin::root()));
 
+		// Batch calls always succeed. We just need to check the inner event
+		assert_ok!(
+			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
+				crate::Call::initialize_reward_vec(vec![([4u8; 32].into(), Some(3), 500)], 1, 0, 1)
+			)]))
+			.dispatch(Origin::root())
+		);
+
 		let expected = vec![
+			pallet_utility::Event::BatchCompleted,
 			pallet_utility::Event::BatchInterrupted(
 				0,
 				DispatchError::Module {
 					index: 2,
-					error: 2,
+					error: 6,
 					message: None,
 				},
 			),
-			pallet_utility::Event::BatchCompleted,
 		];
 		assert_eq!(batch_events(), expected);
 	});

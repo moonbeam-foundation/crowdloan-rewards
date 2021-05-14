@@ -99,14 +99,14 @@ parameter_types! {
 	pub const TestDefaultNextInitialization: u64 = 0;
 	pub const TestMinimumContribution: u128 = 0;
 	pub const TestDefaultBlocksPerRound: u32 = 500;
+	pub const TestInitialized: bool = false;
 }
 
 impl Config for Test {
 	type Event = Event;
-	type LeasePeriod = TestLeasePeriod;
-	type DefaultNextInitialization = TestDefaultNextInitialization;
 	type DefaultBlocksPerRound = TestDefaultBlocksPerRound;
 	type MinimumContribution = TestMinimumContribution;
+	type Initialized = TestInitialized;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -132,14 +132,16 @@ fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::Tes
 
 	let mut ext = sp_io::TestExternalities::from(storage);
 	ext.execute_with(|| {
-		Crowdloan::initialize_reward_vec(
-			Origin::root(),
-			contributions.clone(),
-			1,
-			0,
-			contributions.len() as u32,
-		)
-		.unwrap();
+		if contributions.len() > 0 {
+			Crowdloan::initialize_reward_vec(
+				Origin::root(),
+				contributions.clone(),
+				1,
+				0,
+				contributions.len() as u32,
+			)
+			.unwrap();
+		}
 		System::set_block_number(1)
 	});
 	ext
@@ -172,6 +174,10 @@ pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
 		(pairs[1].public().into(), None, 500),
 		(pairs[2].public().into(), None, 500),
 	])
+}
+
+pub(crate) fn empty() -> sp_io::TestExternalities {
+	genesis(vec![])
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {

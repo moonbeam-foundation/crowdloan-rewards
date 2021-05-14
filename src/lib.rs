@@ -86,19 +86,16 @@ pub mod pallet {
 	/// Configuration trait of this pallet.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The period after which the contribution storage can be initialized again
-		type LeasePeriod: Get<Self::BlockNumber>;
-		/// When we allow for first initialization
-		type DefaultNextInitialization: Get<Self::BlockNumber>;
 		/// Default number of blocks per round at genesis
 		type DefaultBlocksPerRound: Get<u32>;
-		/// The overarching event type
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The period after which the contribution storage can be initialized again
 		type MinimumContribution: Get<BalanceOf<Self>>;
+		/// The overarching event type
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// Checker for the reward vec, is it initalized already?
+		type Initialized: Get<bool>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
-
 		// TODO What trait bounds do I need here? I think concretely we would
 		// be using MultiSigner? Or maybe MultiAccount? I copied these from frame_system
 		/// The AccountId type contributors used on the relay chain.
@@ -360,12 +357,9 @@ pub mod pallet {
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
-			let now = frame_system::Pallet::<T>::block_number();
-			let next_init = <NextInitialization<T>>::get();
-			ensure!(
-				now >= next_init,
-				Error::<T>::CurrentLeasePeriodAlreadyInitialized
-			);
+			//let now = frame_system::Pallet::<T>::block_number();
+			let next_init = <Initialized<T>>::get();
+			ensure!(next_init == false, Error::<T>::RewardVecAlreadyInitialized,);
 			for (relay_account, native_account, contribution) in &contributions {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
 					|| UnassociatedContributions::<T>::get(&relay_account).is_some()
@@ -394,7 +388,7 @@ pub mod pallet {
 				}
 			}
 			if index + contributions.len() as u32 == limit {
-				<NextInitialization<T>>::put(now + T::LeasePeriod::get());
+				<Initialized<T>>::put(true);
 			}
 			Ok(Default::default())
 		}
@@ -463,6 +457,8 @@ pub mod pallet {
 		/// User trying to claim rewards has already claimed all rewards associated with its
 		/// identity and contribution
 		RewardsAlreadyClaimed,
+		/// Reward vec has already been initialized
+		RewardVecAlreadyInitialized,
 		/// Invalid conversion while calculating payable amount
 		WrongConversionU128ToBalance,
 	}
@@ -514,9 +510,8 @@ pub mod pallet {
 	pub type UnassociatedContributions<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, RewardInfo<T>>;
 	#[pallet::storage]
-	#[pallet::getter(fn next_initialization)]
-	pub type NextInitialization<T: Config> =
-		StorageValue<_, T::BlockNumber, ValueQuery, T::DefaultNextInitialization>;
+	#[pallet::getter(fn initialized)]
+	pub type Initialized<T: Config> = StorageValue<_, bool, ValueQuery, T::Initialized>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn round)]
