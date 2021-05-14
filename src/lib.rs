@@ -89,7 +89,7 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
-		/// Commission due to collators, set at genesis
+		/// Percentage to be payed at initialization
 		type InitializationPayment: Get<Perbill>;
 		/// The account from which payments will be performed
 		type PalletAccountId: Get<Self::AccountId>;
