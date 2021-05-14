@@ -234,8 +234,20 @@ pub mod pallet {
 			);
 
 			// Upon error this should check the relay chain state in this case
-			let reward_info = UnassociatedContributions::<T>::get(&relay_account)
+			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
 				.ok_or(Error::<T>::NoAssociatedClaim)?;
+
+			// Make the first payment
+			let first_payment = T::InitializationPayment::get() * reward_info.total_reward;
+
+			T::RewardCurrency::transfer(
+				&T::PalletAccountId::get(),
+				&reward_account,
+				first_payment,
+				KeepAlive,
+			)?;
+
+			reward_info.claimed_reward = first_payment;
 
 			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
@@ -276,7 +288,10 @@ pub mod pallet {
 
 			let now = frame_system::Pallet::<T>::block_number();
 
-			let payable_per_block = info.total_reward
+			// Substract the first payment from the vested amount
+			let first_paid = T::InitializationPayment::get() * info.total_reward;
+
+			let payable_per_block = (info.total_reward - first_paid)
 				/ T::VestingPeriod::get()
 					.saturated_into::<u128>()
 					.try_into()
