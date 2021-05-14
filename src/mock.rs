@@ -99,6 +99,7 @@ parameter_types! {
 	pub const TestDefaultBlocksPerRound: u32 = 500;
 	pub const TestPalletAccountId: AccountId = 100;
 	pub const TestInitialized: bool = false;
+	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
 
 impl Config for Test {
@@ -106,6 +107,7 @@ impl Config for Test {
 	type DefaultBlocksPerRound = TestDefaultBlocksPerRound;
 	type MinimumContribution = TestMinimumContribution;
 	type Initialized = TestInitialized;
+	type InitializationPayment = TestInitializationPayment;
 	type PalletAccountId = TestPalletAccountId;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
