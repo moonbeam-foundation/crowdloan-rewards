@@ -22,6 +22,8 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
 nimbus-primitives = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
 cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
+cumulus-test-relay-sproof-builder = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
 
 
 
@@ -42,7 +44,9 @@ std = [
     "sp-io/std",
     "cumulus-pallet-parachain-system/std",
     "cumulus-primitives-core/std",
-    "nimbus-primitives/std"
+    "nimbus-primitives/std",
+    "cumulus-primitives-parachain-inherent/std",
+    "cumulus-test-relay-sproof-builder/std"
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",
