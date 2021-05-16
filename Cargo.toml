@@ -20,6 +20,8 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "r
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
 nimbus-primitives = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
+cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
+
 
 
 [features]
@@ -37,5 +39,6 @@ std = [
     "sp-std/std",
     "sp-io/std",
     "cumulus-pallet-parachain-system/std",
+    "cumulus-primitives-core/std",
     "nimbus-primitives/std"
 ]
