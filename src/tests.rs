@@ -402,7 +402,23 @@ fn initialize_new_addresses_with_batch() {
 
 #[test]
 fn automatic_paying_works() {
-	two_assigned_three_unassigned().execute_with(|| {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500),
+				([2u8; 32].into(), Some(2), 500),
+				(pairs[0].public().into(), None, 500),
+				(pairs[1].public().into(), None, 500),
+				(pairs[2].public().into(), None, 500)
+			],
+			1,
+			0,
+			5
+		));
+		assert_eq!(Crowdloan::initialized(), true);
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(502);
