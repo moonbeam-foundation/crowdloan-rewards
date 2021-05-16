@@ -16,7 +16,14 @@
 
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{
+	construct_runtime, parameter_types,
+	traits::{GenesisBuild, OnFinalize, OnInitialize},
+	inherent::{ProvideInherent},
+	dispatch::UnfilteredDispatchable,
+};
+use cumulus_primitives_core::{relay_chain::BlockNumber as RelayChainBlockNumber};
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
@@ -25,6 +32,10 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::convert::{From, TryInto};
+use frame_support::inherent::InherentData;
+use frame_system::RawOrigin;
+use cumulus_primitives_parachain_inherent::ParachainInherentData;
+use cumulus_primitives_core::PersistedValidationData;
 
 pub type AccountId = u64;
 pub type Balance = u128;
@@ -129,6 +140,7 @@ impl pallet_utility::Config for Test {
 	type WeightInfo = ();
 }
 
+
 fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
@@ -210,6 +222,44 @@ pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
 
 pub(crate) fn roll_to(n: u64) {
 	while System::block_number() < n {
+		// Relay chain Stuff. I might actually set this to a number different than N
+		let sproof_builder = RelayStateSproofBuilder::default();
+		let (relay_parent_storage_root, relay_chain_state) =
+			sproof_builder.into_state_root_and_proof();
+		let vfp = PersistedValidationData {
+			relay_parent_number: n as RelayChainBlockNumber,
+			relay_parent_storage_root,
+			..Default::default()
+		};
+		let inherent_data = {
+			let mut inherent_data = InherentData::default();
+			let system_inherent_data = ParachainInherentData {
+				validation_data: vfp.clone(),
+				relay_chain_state,
+				downward_messages: Default::default(),
+				horizontal_messages: Default::default(),
+			};
+			inherent_data
+				.put_data(
+					cumulus_primitives_parachain_inherent::INHERENT_IDENTIFIER,
+					&system_inherent_data,
+				)
+				.expect("failed to put VFP inherent");
+			inherent_data
+		};
+
+		Crowdloan::on_finalize(System::block_number());
+		Balances::on_finalize(System::block_number());
+		System::on_finalize(System::block_number());
 		System::set_block_number(System::block_number() + 1);
+		System::on_initialize(System::block_number());
+		Balances::on_initialize(System::block_number());
+		Crowdloan::on_initialize(System::block_number());
+		ParachainSystem::on_initialize(n);
+		ParachainSystem::create_inherent(&inherent_data)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		ParachainSystem::on_finalize(n);
 	}
 }
