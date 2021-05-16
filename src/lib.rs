@@ -73,6 +73,7 @@ pub mod pallet {
 	use frame_support::traits::ExistenceRequirement::KeepAlive;
 	use frame_support::{dispatch::fmt::Debug, pallet_prelude::*, traits::Currency};
 	use frame_system::pallet_prelude::*;
+	use nimbus_primitives::SlotBeacon;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
@@ -82,9 +83,15 @@ pub mod pallet {
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
 
+	pub struct RelayChainBeacon<T>(PhantomData<T>);
+
 	/// Configuration trait of this pallet.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: cumulus_pallet_parachain_system::Config + frame_system::Config {
+		/// Default number of blocks per round at genesis
+		type DefaultBlocksPerRound: Get<u32>;
+		/// The period after which the contribution storage can be initialized again
+		type MinimumContribution: Get<BalanceOf<Self>>;
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Checker for the reward vec, is it initalized already?
@@ -374,6 +381,14 @@ pub mod pallet {
 				<Initialized<T>>::put(true);
 			}
 			Ok(Default::default())
+		}
+	}
+
+	impl<T: cumulus_pallet_parachain_system::Config> SlotBeacon for RelayChainBeacon<T> {
+		fn slot() -> u32 {
+			cumulus_pallet_parachain_system::Module::<T>::validation_data()
+				.expect("validation data was set in parachain system inherent")
+				.relay_parent_number
 		}
 	}
 

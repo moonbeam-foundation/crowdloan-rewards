@@ -6,8 +6,8 @@ version = '0.6.0'
 description = "Reward citizens who participated in a crowdloan to acquire a parachain slot o nthe backing relay chain."
 
 [dependencies]
-parity-scale-codec = { version = "2.0.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
+parity-scale-codec = { version = "2.1.1", default-features = false}
+serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 log = { version = "0.4", default-features = false }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
@@ -18,6 +18,8 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "rococo-v1", default-features = false }
+cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
+nimbus-primitives = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
 
 
 [features]
@@ -33,5 +35,7 @@ std = [
     "serde",
     "log/std",
     "sp-std/std",
-    "sp-io/std"
+    "sp-io/std",
+    "cumulus-pallet-parachain-system/std",
+    "nimbus-primitives/std"
 ]
