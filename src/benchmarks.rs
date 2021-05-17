@@ -107,7 +107,7 @@ fn create_contributors<T: Config>(
 }
 
 const USER_SEED: u32 = 999666;
-const MAX_USERS: u32 = 100;
+const MAX_USERS: u32 = 10000;
 
 benchmarks! {
 	initialize_reward_vec {
