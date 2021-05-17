@@ -2,6 +2,7 @@
 
 use crate::{BalanceOf, Call, Config, Pallet};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
+use cumulus_primitives_core::relay_chain::v1::HeadData;
 use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
@@ -14,11 +15,10 @@ use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_trie::StorageProof;
 use sp_runtime::traits::One;
 use sp_std::vec;
 use sp_std::vec::Vec;
-use cumulus_primitives_core::relay_chain::v1::HeadData;
+use sp_trie::StorageProof;
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -49,8 +49,16 @@ fn create_funded_user<T: Config>(
 }
 
 fn create_fake_valid_proof() -> (H256, StorageProof) {
-	let proof =  StorageProof::new(vec![vec![127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180, 157, 149, 50, 13, 144, 33, 153, 76, 133, 15, 37, 184, 227, 133, 144, 0, 0, 32, 0, 0, 0, 16, 0, 8, 0, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0]]);
-	let hash = [216 ,6 ,227 ,175 ,180 ,211 ,98 ,117 ,202 ,245 ,206 ,51 ,21 ,143 ,100 ,232 ,96 ,217 ,14 ,71 ,243 ,146 ,7 ,202 ,245 ,129 ,165 ,70 ,72 ,184 ,130 ,141].into();
+	let proof = StorageProof::new(vec![vec![
+		127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180,
+		157, 149, 50, 13, 144, 33, 153, 76, 133, 15, 37, 184, 227, 133, 144, 0, 0, 32, 0, 0, 0, 16,
+		0, 8, 0, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0,
+	]]);
+	let hash = [
+		216, 6, 227, 175, 180, 211, 98, 117, 202, 245, 206, 51, 21, 143, 100, 232, 96, 217, 14, 71,
+		243, 146, 7, 202, 245, 129, 165, 70, 72, 184, 130, 141,
+	]
+	.into();
 
 	(hash, proof)
 }
@@ -105,8 +113,7 @@ benchmarks! {
 	initialize_reward_vec {
 		let l in 1..MAX_USERS;
 		// Fund pallet account
-		let pallet_account = T::PalletAccountId::get();
-		fund_specific_account::<T>(pallet_account, 100000u32.into());
+		fund_specific_account::<T>(Pallet::<T>::account_id(), 100000u32.into());
 		let caller: T::AccountId = create_funded_user::<T>("caller", USER_SEED, 0u32.into());
 		let relay_chain_account: AccountId32 = [2u8; 32].into();
 		let user: T::AccountId = create_funded_user::<T>("caller", USER_SEED-1, 0u32.into());
@@ -123,8 +130,7 @@ benchmarks! {
 	show_me_the_money {
 		let l in 1..MAX_USERS;
 		// Fund pallet account
-		let pallet_account = T::PalletAccountId::get();
-		fund_specific_account::<T>(pallet_account, 100000u32.into());
+		fund_specific_account::<T>(Pallet::<T>::account_id(), 100000u32.into());
 		let mut contribution_vec = Vec::new();
 		for i in 0..l{
 			let seed = MAX_USERS - i;
@@ -169,8 +175,7 @@ benchmarks! {
 	on_finalize_pay_contributors {
 		let l in 1..MAX_USERS;
 		// Fund pallet account
-		let pallet_account = T::PalletAccountId::get();
-		fund_specific_account::<T>(pallet_account, 100000u32.into());
+		fund_specific_account::<T>(Pallet::<T>::account_id(), 100000u32.into());
 		let mut contribution_vec = Vec::new();
 
 		for i in 0..l{
