@@ -113,7 +113,7 @@ benchmarks! {
 	initialize_reward_vec {
 		//let l in 1..MAX_USERS;
 		// Fund pallet account
-		fund_specific_account::<T>(Pallet::<T>::account_id(), 100000u32.into());
+		fund_specific_account::<T>(Pallet::<T>::account_id(), 10000000000u32.into());
 		let caller: T::AccountId = create_funded_user::<T>("caller", USER_SEED, 0u32.into());
 		let relay_chain_account: AccountId32 = [2u8; 32].into();
 		let user: T::AccountId = create_funded_user::<T>("caller", USER_SEED-1, 0u32.into());
@@ -130,7 +130,7 @@ benchmarks! {
 	show_me_the_money {
 		//let l in 1..MAX_USERS;
 		// Fund pallet account
-		fund_specific_account::<T>(Pallet::<T>::account_id(), 100000u32.into());
+		fund_specific_account::<T>(Pallet::<T>::account_id(), 10000000000u32.into());
 		let mut contribution_vec = Vec::new();
 		for i in 0..MAX_USERS{
 			let seed = MAX_USERS - i;
@@ -175,7 +175,7 @@ benchmarks! {
 	on_finalize_pay_contributors {
 		//let l in 1..MAX_USERS;
 		// Fund pallet account
-		fund_specific_account::<T>(Pallet::<T>::account_id(), 100000u32.into());
+		fund_specific_account::<T>(Pallet::<T>::account_id(), 10000000000u32.into());
 		let mut contribution_vec = Vec::new();
 
 		for i in 0..MAX_USERS{
