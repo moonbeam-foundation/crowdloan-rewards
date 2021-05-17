@@ -5,7 +5,6 @@ use cumulus_pallet_parachain_system::Pallet as RelayPallet;
 use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
-use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelist_account};
 use frame_support::dispatch::UnfilteredDispatchable;
 use frame_support::inherent::InherentData;
@@ -14,9 +13,12 @@ use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
 use sp_core::crypto::AccountId32;
+use sp_core::H256;
+use sp_trie::StorageProof;
 use sp_runtime::traits::One;
 use sp_std::vec;
 use sp_std::vec::Vec;
+use cumulus_primitives_core::relay_chain::v1::HeadData;
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -46,13 +48,21 @@ fn create_funded_user<T: Config>(
 	user
 }
 
+fn create_fake_valid_proof() -> (H256, StorageProof) {
+	let proof =  StorageProof::new(vec![vec![127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180, 157, 149, 50, 13, 144, 33, 153, 76, 133, 15, 37, 184, 227, 133, 144, 0, 0, 32, 0, 0, 0, 16, 0, 8, 0, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0]]);
+	let hash = [216 ,6 ,227 ,175 ,180 ,211 ,98 ,117 ,202 ,245 ,206 ,51 ,21 ,143 ,100 ,232 ,96 ,217 ,14 ,71 ,243 ,146 ,7 ,202 ,245 ,129 ,165 ,70 ,72 ,184 ,130 ,141].into();
+
+	(hash, proof)
+}
+
 fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
-	let sproof_builder = RelayStateSproofBuilder::default();
-	let (relay_parent_storage_root, relay_chain_state) = sproof_builder.into_state_root_and_proof();
+	let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
+
 	let vfp = PersistedValidationData {
 		relay_parent_number: block_number as RelayChainBlockNumber,
 		relay_parent_storage_root,
-		..Default::default()
+		max_pov_size: 1000u32,
+		parent_head: HeadData(vec![1, 1, 1]),
 	};
 	let inherent_data = {
 		let mut inherent_data = InherentData::default();
