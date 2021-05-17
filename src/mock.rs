@@ -119,7 +119,8 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
-	pub const TestPalletAccountId: AccountId = 100;
+	pub const TestMinimumContribution: u128 = 0;
+	pub const TestDefaultBlocksPerRound: u32 = 500;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
@@ -128,7 +129,6 @@ impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
 	type InitializationPayment = TestInitializationPayment;
-	type PalletAccountId = TestPalletAccountId;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -145,14 +145,14 @@ fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::Tes
 	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
-
-	// AccountId paying the rewards
-	let balances_vec = vec![(TestPalletAccountId::get(), 1000000)];
-	pallet_balances::GenesisConfig::<Test> {
-		balances: balances_vec,
+	pallet_crowdloan_rewards::GenesisConfig::<Test> {
+		associated: vec![],
+		unassociated: vec![],
+		reward_ratio: 0,
+		funded_amount: 100000u32.into(),
 	}
 	.assimilate_storage(&mut storage)
-	.unwrap();
+	.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::from(storage);
 	ext.execute_with(|| {
