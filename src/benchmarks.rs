@@ -15,6 +15,14 @@ fn default_balance<T: Config>() -> BalanceOf<T> {
 }
 
 /// Create a funded user.
+fn fund_specific_account<T: Config>(pallet_account: T::AccountId, extra: BalanceOf<T>) {
+	let default_balance = default_balance::<T>();
+	let total = default_balance + extra;
+	T::RewardCurrency::make_free_balance_be(&pallet_account, total);
+	T::RewardCurrency::issue(total);
+}
+
+/// Create a funded user.
 fn create_funded_user<T: Config>(
 	string: &'static str,
 	n: u32,
@@ -50,6 +58,9 @@ const MAX_USERS: u32 = 100;
 benchmarks! {
 	initialize_reward_vec {
 		let l in 1..MAX_USERS;
+		// Fund pallet account
+		let pallet_account = T::PalletAccountId::get();
+		fund_specific_account::<T>(pallet_account, 100000u32.into());
 		let caller: T::AccountId = create_funded_user::<T>("caller", USER_SEED, 0u32.into());
 		let relay_chain_account: AccountId32 = [2u8; 32].into();
 		let user: T::AccountId = create_funded_user::<T>("caller", USER_SEED-1, 0u32.into());
@@ -64,6 +75,9 @@ benchmarks! {
 
 	show_me_the_money {
 		let l in 1..MAX_USERS;
+		// Fund pallet account
+		let pallet_account = T::PalletAccountId::get();
+		fund_specific_account::<T>(pallet_account, 100000u32.into());
 		let mut contribution_vec = Vec::new();
 		for i in 0..l{
 			let seed = MAX_USERS - i;
@@ -89,6 +103,9 @@ benchmarks! {
 
 	on_finalize_pay_contributors {
 		let l in 1..MAX_USERS;
+		// Fund pallet account
+		let pallet_account = T::PalletAccountId::get();
+		fund_specific_account::<T>(pallet_account, 100000u32.into());
 		let mut contribution_vec = Vec::new();
 
 		for i in 0..l{

@@ -219,7 +219,8 @@ pub mod pallet {
 			proof: MultiSignature,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
-			let _ = RelayChainBeacon::<T>::slot();
+			//	let slot = RelayChainBeacon::<T>::slot();
+			//	println!("{:?}", slot);
 			// Check the proof:
 			// 1. Is signed by an actual unassociated contributor
 			// 2. Signs a valid native identity
