@@ -132,7 +132,15 @@ pub mod pallet {
 
 	// No hooks
 	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_finalize(n: T::BlockNumber) {
+			let slot = RelayChainBeacon::<T>::slot();
+			// In the first block of the parachain we need to introduce the relay block related info
+			if n == 1u32.into() {
+				<InitRelayBlock<T>>::put(slot);
+			}
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -155,7 +163,6 @@ pub mod pallet {
 			proof: MultiSignature,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
-			let _ = RelayChainBeacon::<T>::slot();
 			// Check the proof:
 			// 1. Is signed by an actual unassociated contributor
 			// 2. Signs a valid native identity
@@ -225,7 +232,14 @@ pub mod pallet {
 				info.claimed_reward < info.total_reward,
 				Error::<T>::RewardsAlreadyClaimed
 			);
-			let now = frame_system::Pallet::<T>::block_number();
+
+			ensure!(
+				info.total_reward > T::MinimumContribution::get(),
+				Error::<T>::ContributionNotHighEnough
+			);
+
+			// Vesting is done in relation with the relay chain slot
+			let now: T::BlockNumber = RelayChainBeacon::<T>::slot().into();
 
 			// Substract the first payment from the vested amount
 			let first_paid = T::InitializationPayment::get() * info.total_reward;
@@ -236,6 +250,7 @@ pub mod pallet {
 					.try_into()
 					.ok()
 					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
+
 			let payable_period = now.saturating_sub(info.last_paid);
 
 			let pay_period_as_balance: BalanceOf<T> = payable_period
@@ -364,10 +379,11 @@ pub mod pallet {
 					0u32.into()
 				};
 
+				// We need to calculate the vesting based on the relay block number
 				let reward_info = RewardInfo {
 					total_reward: total_payment,
 					claimed_reward: initial_payment,
-					last_paid: 0u32.into(),
+					last_paid: <InitRelayBlock<T>>::get().into(),
 				};
 
 				if let Some(native_account) = native_account {
@@ -470,6 +486,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn initialized)]
 	pub type Initialized<T: Config> = StorageValue<_, bool, ValueQuery, T::Initialized>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn init_relay_block)]
+	/// Relay block height at the initialization of the pallet
+	type InitRelayBlock<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
