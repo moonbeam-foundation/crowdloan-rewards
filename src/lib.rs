@@ -73,10 +73,11 @@ mod tests;
 pub mod pallet {
 
 	use frame_support::traits::ExistenceRequirement::KeepAlive;
-	use frame_support::{dispatch::fmt::Debug, pallet_prelude::*, traits::Currency};
+	use frame_support::{dispatch::fmt::Debug, pallet_prelude::*, traits::Currency, PalletId};
 	use frame_system::pallet_prelude::*;
 	use nimbus_primitives::SlotBeacon;
 	use sp_core::crypto::AccountId32;
+	use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::traits::{Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
 	use sp_std::{convert::TryInto, vec::Vec};
@@ -84,6 +85,8 @@ pub mod pallet {
 	/// The Author Filter pallet
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
+
+	pub const PALLET_ID: PalletId = PalletId(*b"Crowdloa");
 
 	pub struct RelayChainBeacon<T>(PhantomData<T>);
 
@@ -100,8 +103,6 @@ pub mod pallet {
 		type Initialized: Get<bool>;
 		/// Percentage to be payed at initialization
 		type InitializationPayment: Get<Perbill>;
-		/// The account from which payments will be performed
-		type PalletAccountId: Get<Self::AccountId>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
 		// TODO What trait bounds do I need here? I think concretely we would
@@ -253,7 +254,7 @@ pub mod pallet {
 			let first_payment = T::InitializationPayment::get() * reward_info.total_reward;
 
 			T::RewardCurrency::transfer(
-				&T::PalletAccountId::get(),
+				&PALLET_ID.into_account(),
 				&reward_account,
 				first_payment,
 				KeepAlive,
@@ -343,7 +344,7 @@ pub mod pallet {
 			// 1. We could have an associated type to absorb the imbalance.
 			// 2. We could have this pallet control a pot of funds, and initialize it at genesis.
 			T::RewardCurrency::transfer(
-				&T::PalletAccountId::get(),
+				&PALLET_ID.into_account(),
 				&payee,
 				payable_amount,
 				KeepAlive,
@@ -430,7 +431,7 @@ pub mod pallet {
 				let initial_payment = if let Some(native_account) = native_account {
 					let first_payment = T::InitializationPayment::get() * total_payment;
 					T::RewardCurrency::transfer(
-						&T::PalletAccountId::get(),
+						&PALLET_ID.into_account(),
 						&native_account,
 						first_payment,
 						KeepAlive,
@@ -518,6 +519,16 @@ pub mod pallet {
 				Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
 			}
 		}
+
+		/// The account ID that holds the Charity's funds
+		pub fn account_id() -> T::AccountId {
+			PALLET_ID.into_account()
+		}
+
+		/// The Charity's balance
+		fn pot() -> BalanceOf<T> {
+			T::RewardCurrency::free_balance(&Self::account_id())
+		}
 	}
 
 	#[pallet::error]
@@ -557,6 +568,8 @@ pub mod pallet {
 		/// https://crates.parity.io/sp_arithmetic/fixed_point/struct.FixedU128.html
 		/// We could also do something fancy and non-linear if the need arises.
 		pub reward_ratio: u32,
+		/// We could also do something fancy and non-linear if the need arises.
+		pub funded_amount: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
@@ -566,6 +579,7 @@ pub mod pallet {
 				associated: Vec::new(),
 				unassociated: Vec::new(),
 				reward_ratio: 1,
+				funded_amount: 1u32.into(),
 			}
 		}
 	}
@@ -573,6 +587,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+			T::RewardCurrency::make_free_balance_be(&Pallet::<T>::account_id(), self.funded_amount);
 			let round: RoundInfo<T::BlockNumber> =
 				RoundInfo::new(1u32, 0u32.into(), T::DefaultBlocksPerRound::get());
 			<Round<T>>::put(round);
