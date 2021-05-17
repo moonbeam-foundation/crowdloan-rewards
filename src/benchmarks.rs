@@ -1,14 +1,23 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::{BalanceOf, Call, Config, Pallet};
+use cumulus_pallet_parachain_system::Pallet as RelayPallet;
+use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
+use cumulus_primitives_core::PersistedValidationData;
+use cumulus_primitives_parachain_inherent::ParachainInherentData;
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelist_account};
-use frame_support::traits::OnFinalize;
+use frame_support::dispatch::UnfilteredDispatchable;
+use frame_support::inherent::InherentData;
+use frame_support::inherent::ProvideInherent;
 use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
+use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::One;
 use sp_std::vec;
 use sp_std::vec::Vec;
+
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
 	<<T as Config>::MinimumContribution as Get<BalanceOf<T>>>::get()
@@ -35,6 +44,33 @@ fn create_funded_user<T: Config>(
 	T::RewardCurrency::make_free_balance_be(&user, total);
 	T::RewardCurrency::issue(total);
 	user
+}
+
+fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
+	let sproof_builder = RelayStateSproofBuilder::default();
+	let (relay_parent_storage_root, relay_chain_state) = sproof_builder.into_state_root_and_proof();
+	let vfp = PersistedValidationData {
+		relay_parent_number: block_number as RelayChainBlockNumber,
+		relay_parent_storage_root,
+		..Default::default()
+	};
+	let inherent_data = {
+		let mut inherent_data = InherentData::default();
+		let system_inherent_data = ParachainInherentData {
+			validation_data: vfp.clone(),
+			relay_chain_state,
+			downward_messages: Default::default(),
+			horizontal_messages: Default::default(),
+		};
+		inherent_data
+			.put_data(
+				cumulus_primitives_parachain_inherent::INHERENT_IDENTIFIER,
+				&system_inherent_data,
+			)
+			.expect("failed to put VFP inherent");
+		inherent_data
+	};
+	inherent_data
 }
 
 /// Create a Contributor.
@@ -68,6 +104,7 @@ benchmarks! {
 		let contributions =  vec![(relay_chain_account.into(), Some(user.clone()), contribution)];
 		let reward_ratio = 1;
 		whitelist_account!(caller);
+
 	}:  _(RawOrigin::Root, contributions, reward_ratio, 0, 1)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&user).is_some());
@@ -95,10 +132,28 @@ benchmarks! {
 		}
 		create_contributors::<T>(contribution_vec, 1)?;
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 0u32.into());
+		let first_block_inherent = create_inherent_data::<T>(1u32);
+		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
+		RelayPallet::<T>::create_inherent(&first_block_inherent)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(T::BlockNumber::one());
+
+		RelayPallet::<T>::on_initialize(10u32.into());
+
+		let last_block_inherent = create_inherent_data::<T>(10u32);
+		RelayPallet::<T>::create_inherent(&last_block_inherent)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+
+		RelayPallet::<T>::on_finalize(10u32.into());
 
 	}:  _(RawOrigin::Signed(caller.clone()))
 	verify {
-		assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, T::BlockNumber::one());
+		assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, (10u32.into()));
 	}
 
 	on_finalize_pay_contributors {
@@ -124,14 +179,35 @@ benchmarks! {
 		}
 		create_contributors::<T>(contribution_vec, 1)?;
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 0u32.into());
-	}: {
+
+		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
+		let first_block_inherent = create_inherent_data::<T>(1u32);
+		RelayPallet::<T>::create_inherent(&first_block_inherent)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		// This sets the first relay block number
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
+
+		RelayPallet::<T>::on_initialize(502u32.into());
+		let last_block_inherent = create_inherent_data::<T>(502u32);
+
+		RelayPallet::<T>::create_inherent(&last_block_inherent)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		RelayPallet::<T>::on_finalize(502u32.into());
+
+	}: {
+		// We need to set the relay block number to >500 to be able to pay
+
+		Pallet::<T>::on_finalize(T::BlockNumber::one() + 502u32.into());
 	}
 	verify {
-	  assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, T::BlockNumber::one());
+	  assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().last_paid, T::BlockNumber::one()+ 501u32.into());
 	}
 }
-
 #[cfg(test)]
 mod tests {
 	use super::*;

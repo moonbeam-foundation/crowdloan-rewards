@@ -170,7 +170,7 @@ pub mod pallet {
 		> Default for RoundInfo<B>
 	{
 		fn default() -> RoundInfo<B> {
-			RoundInfo::new(0u32, 0u32.into(), 1u32.into())
+			RoundInfo::new(0u32, 0u32.into(), 500u32.into())
 		}
 	}
 
@@ -187,12 +187,21 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_finalize(n: T::BlockNumber) {
+			let slot = RelayChainBeacon::<T>::slot();
+			// In the first block of the parachain we need to introduce the relay block related info
+			if n == 1u32.into() {
+				<InitRelayBlock<T>>::put(slot);
+				// Initialize Round Info
+				let round: RoundInfo<T::BlockNumber> =
+					RoundInfo::new(slot, slot.into(), T::DefaultBlocksPerRound::get());
+				<Round<T>>::put(round);
+			}
 			let mut round = <Round<T>>::get();
-			if round.should_update(n) {
+			if round.should_update(slot.into()) {
 				// mutate round
-				round.update(n);
+				round.update(slot.into());
 				// pay all stakers for T::BondDuration rounds ago
-				Self::pay_contributors(n);
+				Self::pay_contributors(slot.into());
 				<Round<T>>::put(round);
 			}
 		}
@@ -219,8 +228,6 @@ pub mod pallet {
 			proof: MultiSignature,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
-			//	let slot = RelayChainBeacon::<T>::slot();
-			//	println!("{:?}", slot);
 			// Check the proof:
 			// 1. Is signed by an actual unassociated contributor
 			// 2. Signs a valid native identity
@@ -296,7 +303,8 @@ pub mod pallet {
 				Error::<T>::ContributionNotHighEnough
 			);
 
-			let now = frame_system::Pallet::<T>::block_number();
+			// Vesting is done in relation with the relay chain slot
+			let now: T::BlockNumber = RelayChainBeacon::<T>::slot().into();
 
 			// Substract the first payment from the vested amount
 			let first_paid = T::InitializationPayment::get() * info.total_reward;
@@ -307,6 +315,7 @@ pub mod pallet {
 					.try_into()
 					.ok()
 					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
+
 			let payable_period = now.saturating_sub(info.last_paid);
 
 			let pay_period_as_balance: BalanceOf<T> = payable_period
@@ -435,10 +444,11 @@ pub mod pallet {
 					0u32.into()
 				};
 
+				// We need to calculate the vesting based on the relay block number
 				let reward_info = RewardInfo {
 					total_reward: total_payment,
 					claimed_reward: initial_payment,
-					last_paid: 0u32.into(),
+					last_paid: <InitRelayBlock<T>>::get().into(),
 				};
 
 				if let Some(native_account) = native_account {
@@ -467,6 +477,9 @@ pub mod pallet {
 		fn pay_contributors(now: T::BlockNumber) {
 			let enumerated: Vec<_> = AccountsPayable::<T>::iter().collect();
 			for (payee, mut info) in enumerated {
+				if info.total_reward == info.claimed_reward {
+					continue;
+				}
 				let payable_per_block = info.total_reward
 					/ T::VestingPeriod::get()
 						.saturated_into::<u128>()
@@ -586,6 +599,11 @@ pub mod pallet {
 	#[pallet::getter(fn round)]
 	/// Current round index and next round scheduled transition
 	type Round<T: Config> = StorageValue<_, RoundInfo<T::BlockNumber>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn init_relay_block)]
+	/// Relay block height at the initialization of the pallet
+	type InitRelayBlock<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]

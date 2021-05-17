@@ -423,7 +423,12 @@ fn automatic_paying_works() {
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(502);
 
-		//assert_eq!(batch_events(), [pallet_utility::Event::BatchCompleted]);
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().last_paid, 500u64);
+		// Here we need to take into account that the relay chain is always one block number above
+		// and that the info was inserted at block number 1
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().last_paid, 502u64);
+		assert_eq!(
+			Crowdloan::accounts_payable(&1).unwrap().claimed_reward,
+			500u128
+		);
 	});
 }

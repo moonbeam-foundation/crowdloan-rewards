@@ -238,7 +238,7 @@ pub(crate) fn roll_to(n: u64) {
 		let (relay_parent_storage_root, relay_chain_state) =
 			sproof_builder.into_state_root_and_proof();
 		let vfp = PersistedValidationData {
-			relay_parent_number: System::block_number() as RelayChainBlockNumber,
+			relay_parent_number: (System::block_number() + 1u64) as RelayChainBlockNumber,
 			relay_parent_storage_root,
 			..Default::default()
 		};
@@ -259,6 +259,13 @@ pub(crate) fn roll_to(n: u64) {
 			inherent_data
 		};
 
+		ParachainSystem::on_initialize(System::block_number());
+		ParachainSystem::create_inherent(&inherent_data)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		ParachainSystem::on_finalize(System::block_number());
+
 		Crowdloan::on_finalize(System::block_number());
 		Balances::on_finalize(System::block_number());
 		System::on_finalize(System::block_number());
@@ -266,11 +273,5 @@ pub(crate) fn roll_to(n: u64) {
 		System::on_initialize(System::block_number());
 		Balances::on_initialize(System::block_number());
 		Crowdloan::on_initialize(System::block_number());
-		ParachainSystem::on_initialize(System::block_number());
-		ParachainSystem::create_inherent(&inherent_data)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		ParachainSystem::on_finalize(System::block_number());
 	}
 }
