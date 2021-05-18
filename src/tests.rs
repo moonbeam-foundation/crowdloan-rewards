@@ -32,13 +32,12 @@ fn geneses() {
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([2u8; 32].into(), Some(2), 500),
-				(pairs[0].public().into(), None, 500),
-				(pairs[1].public().into(), None, 500),
-				(pairs[2].public().into(), None, 500)
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
 			],
-			1,
 			0,
 			5
 		));
@@ -74,13 +73,12 @@ fn proving_assignation_works() {
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([2u8; 32].into(), Some(2), 500),
-				(pairs[0].public().into(), None, 500),
-				(pairs[1].public().into(), None, 500),
-				(pairs[2].public().into(), None, 500)
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
 			],
-			1,
 			0,
 			5
 		));
@@ -137,13 +135,12 @@ fn paying_works() {
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([2u8; 32].into(), Some(2), 500),
-				(pairs[0].public().into(), None, 500),
-				(pairs[1].public().into(), None, 500),
-				(pairs[2].public().into(), None, 500)
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
 			],
-			1,
 			0,
 			5
 		));
@@ -201,13 +198,12 @@ fn paying_late_joiner_works() {
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([2u8; 32].into(), Some(2), 500),
-				(pairs[0].public().into(), None, 500),
-				(pairs[1].public().into(), None, 500),
-				(pairs[2].public().into(), None, 500)
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
 			],
-			1,
 			0,
 			5
 		));
@@ -240,13 +236,12 @@ fn update_address_works() {
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([2u8; 32].into(), Some(2), 500),
-				(pairs[0].public().into(), None, 500),
-				(pairs[1].public().into(), None, 500),
-				(pairs[2].public().into(), None, 500)
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
 			],
-			1,
 			0,
 			5
 		));
@@ -284,13 +279,12 @@ fn update_address_with_existing_address_works() {
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([2u8; 32].into(), Some(2), 500),
-				(pairs[0].public().into(), None, 500),
-				(pairs[1].public().into(), None, 500),
-				(pairs[2].public().into(), None, 500)
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
 			],
-			1,
 			0,
 			5
 		));
@@ -330,13 +324,12 @@ fn initialize_new_addresses() {
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
-				([1u8; 32].into(), Some(1), 500),
-				([2u8; 32].into(), Some(2), 500),
-				(pairs[0].public().into(), None, 500),
-				(pairs[1].public().into(), None, 500),
-				(pairs[2].public().into(), None, 500)
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
 			],
-			1,
 			0,
 			5
 		));
@@ -346,8 +339,7 @@ fn initialize_new_addresses() {
 		assert_noop!(
 			Crowdloan::initialize_reward_vec(
 				Origin::root(),
-				vec![([1u8; 32].into(), Some(1), 500)],
-				1,
+				vec![([1u8; 32].into(), Some(1), 500u32.into())],
 				0,
 				1
 			),
@@ -364,13 +356,11 @@ fn initialize_new_addresses_with_batch() {
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![([4u8; 32].into(), Some(3), 500)],
-				1,
 				0,
 				2
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![([5u8; 32].into(), Some(1), 500)],
-				1,
 				1,
 				2
 			))
@@ -380,7 +370,7 @@ fn initialize_new_addresses_with_batch() {
 		// Batch calls always succeed. We just need to check the inner event
 		assert_ok!(
 			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
-				crate::Call::initialize_reward_vec(vec![([4u8; 32].into(), Some(3), 500)], 1, 0, 1)
+				crate::Call::initialize_reward_vec(vec![([4u8; 32].into(), Some(3), 500)], 0, 1)
 			)]))
 			.dispatch(Origin::root())
 		);
