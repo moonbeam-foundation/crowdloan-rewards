@@ -355,12 +355,12 @@ fn initialize_new_addresses_with_batch() {
 		roll_to(10);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(3), 500)],
+				vec![([4u8; 32].into(), Some(3), 1250)],
 				0,
 				2
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(1), 500)],
+				vec![([5u8; 32].into(), Some(1), 1250)],
 				1,
 				2
 			))

@@ -170,7 +170,7 @@ pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 }
 
 pub(crate) fn empty() -> sp_io::TestExternalities {
-	genesis(100000u32.into())
+	genesis(2500u32.into())
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {

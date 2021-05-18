@@ -81,7 +81,6 @@ pub mod pallet {
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
 	use sp_std::{convert::TryInto, vec::Vec};
-
 	/// The Author Filter pallet
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
@@ -402,7 +401,22 @@ pub mod pallet {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
 				}
 			}
+			// Let's ensure we can close initialization
 			if index + rewards.len() as u32 == limit {
+				let claimed_rewards = AccountsPayable::<T>::iter().fold(
+					0u32.into(),
+					|acc: BalanceOf<T>, (_, reward_info)| {
+						acc + reward_info.total_reward - reward_info.claimed_reward
+					},
+				);
+				let unassociated_rewards = UnassociatedContributions::<T>::iter()
+					.fold(0u32.into(), |acc: BalanceOf<T>, (_, reward_info)| {
+						acc + reward_info.total_reward
+					});
+				ensure!(
+					claimed_rewards + unassociated_rewards == Self::pot(),
+					Error::<T>::RewardsDoNotMatchFund
+				);
 				<Initialized<T>>::put(true);
 			}
 			Ok(Default::default())
@@ -413,6 +427,10 @@ pub mod pallet {
 		/// The account ID that holds the Crowdloan's funds
 		pub fn account_id() -> T::AccountId {
 			PALLET_ID.into_account()
+		}
+		/// The Account Id's balance
+		fn pot() -> BalanceOf<T> {
+			T::RewardCurrency::free_balance(&Self::account_id())
 		}
 	}
 
@@ -435,6 +453,8 @@ pub mod pallet {
 		RewardsAlreadyClaimed,
 		/// Reward vec has already been initialized
 		RewardVecAlreadyInitialized,
+		/// Reward vec has already been initialized
+		RewardsDoNotMatchFund,
 		/// Invalid conversion while calculating payable amount
 		WrongConversionU128ToBalance,
 	}
