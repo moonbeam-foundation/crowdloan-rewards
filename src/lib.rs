@@ -99,7 +99,7 @@ pub mod pallet {
 		type Initialized: Get<bool>;
 		/// Percentage to be payed at initialization
 		type InitializationPayment: Get<Perbill>;
-		/// The period after which the contribution storage can be initialized again
+		/// The minimum contribution to which rewards will be paid.
 		type MinimumContribution: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
@@ -238,11 +238,6 @@ pub mod pallet {
 				Error::<T>::RewardsAlreadyClaimed
 			);
 
-			ensure!(
-				info.total_reward > T::MinimumContribution::get(),
-				Error::<T>::ContributionNotHighEnough
-			);
-
 			// Vesting is done in relation with the relay chain slot
 			let now: T::BlockNumber =
 				cumulus_pallet_parachain_system::Module::<T>::validation_data()
@@ -350,13 +345,14 @@ pub mod pallet {
 				initialized == false,
 				Error::<T>::RewardVecAlreadyInitialized
 			);
+
 			for (relay_account, native_account, contribution) in &contributions {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
 					|| UnassociatedContributions::<T>::get(&relay_account).is_some()
 				{
 					// Dont fail as this is supposed to be called with batch calls and we
 					// dont want to stall the rest of the contributions
-					Self::deposit_event(Event::ErrorWhileInitializing(
+					Self::deposit_event(Event::InitializedAlreadyInitializedAccount(
 						relay_account.clone(),
 						native_account.clone(),
 						*contribution,
@@ -366,6 +362,17 @@ pub mod pallet {
 
 				let total_payment = BalanceOf::<T>::from(*contribution)
 					.saturating_mul(BalanceOf::<T>::from(reward_ratio));
+
+				if total_payment < T::MinimumContribution::get() {
+					// Dont fail as this is supposed to be called with batch calls and we
+					// dont want to stall the rest of the contributions
+					Self::deposit_event(Event::InitializedAccountWithNotEnoughContribution(
+						relay_account.clone(),
+						native_account.clone(),
+						*contribution,
+					));
+					continue;
+				}
 
 				// If we have a native_account, we make the payment
 				let initial_payment = if let Some(native_account) = native_account {
@@ -493,7 +500,13 @@ pub mod pallet {
 		RewardsPaid(T::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
 		RewardAddressUpdated(T::AccountId, T::AccountId),
-		/// An error occurred when initializing the reward vector for a particular RelayChainAccount
-		ErrorWhileInitializing(T::RelayChainAccountId, Option<T::AccountId>, u32),
+		/// When initializing the reward vec an already initialized account was found
+		InitializedAlreadyInitializedAccount(T::RelayChainAccountId, Option<T::AccountId>, u32),
+		/// When initializing the reward vec an already initialized account was found
+		InitializedAccountWithNotEnoughContribution(
+			T::RelayChainAccountId,
+			Option<T::AccountId>,
+			u32,
+		),
 	}
 }
