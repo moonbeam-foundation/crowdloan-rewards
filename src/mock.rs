@@ -16,16 +16,27 @@
 
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
-use frame_support::{construct_runtime, parameter_types};
+use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
+use cumulus_primitives_core::PersistedValidationData;
+use cumulus_primitives_parachain_inherent::ParachainInherentData;
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+use frame_support::{
+	construct_runtime,
+	dispatch::UnfilteredDispatchable,
+	inherent::{InherentData, ProvideInherent},
+	parameter_types,
+	traits::{GenesisBuild, OnFinalize, OnInitialize},
+};
+use frame_system::RawOrigin;
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	Perbill,
 };
 use sp_std::convert::{From, TryInto};
 
-pub type AccountId = u64;
 pub type Balance = u128;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -40,9 +51,24 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Crowdloan: pallet_crowdloan_rewards::{Pallet, Call, Storage, Event<T>},
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>},
 		Utility: pallet_utility::{Pallet, Call, Storage, Event},
 	}
 );
+
+parameter_types! {
+	pub ParachainId: cumulus_primitives_core::ParaId = 100.into();
+}
+
+impl cumulus_pallet_parachain_system::Config for Test {
+	type SelfParaId = ParachainId;
+	type Event = Event;
+	type OnValidationData = ();
+	type DownwardMessageHandlers = ();
+	type OutboundXcmpMessageSource = ();
+	type XcmpMessageHandler = ();
+	type ReservedXcmpWeight = ();
+}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -71,7 +97,7 @@ impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type OnSetCode = ();
+	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
@@ -92,14 +118,16 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
-	pub const TestLeasePeriod: u64 = 10;
-	pub const TestDefaultNextInitialization: u64 = 0;
+	pub const TestMinimumContribution: u128 = 0;
+	pub const TestInitialized: bool = false;
+	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
 
 impl Config for Test {
 	type Event = Event;
-	type LeasePeriod = TestLeasePeriod;
-	type DefaultNextInitialization = TestDefaultNextInitialization;
+	type Initialized = TestInitialized;
+	type InitializationPayment = TestInitializationPayment;
+	type MinimumContribution = TestMinimumContribution;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -111,23 +139,16 @@ impl pallet_utility::Config for Test {
 	type WeightInfo = ();
 }
 
-fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
+fn genesis(funded_amount: Balance) -> sp_io::TestExternalities {
+	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
+	pallet_crowdloan_rewards::GenesisConfig::<Test> { funded_amount }
+		.assimilate_storage(&mut storage)
+		.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::from(storage);
-	ext.execute_with(|| {
-		Crowdloan::initialize_reward_vec(
-			Origin::root(),
-			contributions.clone(),
-			1,
-			0,
-			contributions.len() as u32,
-		)
-		.unwrap();
-		System::set_block_number(1)
-	});
+	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
 
@@ -148,16 +169,8 @@ pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 	pairs
 }
 
-pub(crate) fn two_assigned_three_unassigned() -> sp_io::TestExternalities {
-	let pairs = get_ed25519_pairs(3);
-	genesis(vec![
-		// validators
-		([1u8; 32].into(), Some(1), 500),
-		([2u8; 32].into(), Some(2), 500),
-		(pairs[0].public().into(), None, 500),
-		(pairs[1].public().into(), None, 500),
-		(pairs[2].public().into(), None, 500),
-	])
+pub(crate) fn empty() -> sp_io::TestExternalities {
+	genesis(100000u32.into())
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {
@@ -190,6 +203,45 @@ pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
 
 pub(crate) fn roll_to(n: u64) {
 	while System::block_number() < n {
+		// Relay chain Stuff. I might actually set this to a number different than N
+		let sproof_builder = RelayStateSproofBuilder::default();
+		let (relay_parent_storage_root, relay_chain_state) =
+			sproof_builder.into_state_root_and_proof();
+		let vfp = PersistedValidationData {
+			relay_parent_number: (System::block_number() + 1u64) as RelayChainBlockNumber,
+			relay_parent_storage_root,
+			..Default::default()
+		};
+		let inherent_data = {
+			let mut inherent_data = InherentData::default();
+			let system_inherent_data = ParachainInherentData {
+				validation_data: vfp.clone(),
+				relay_chain_state,
+				downward_messages: Default::default(),
+				horizontal_messages: Default::default(),
+			};
+			inherent_data
+				.put_data(
+					cumulus_primitives_parachain_inherent::INHERENT_IDENTIFIER,
+					&system_inherent_data,
+				)
+				.expect("failed to put VFP inherent");
+			inherent_data
+		};
+
+		ParachainSystem::on_initialize(System::block_number());
+		ParachainSystem::create_inherent(&inherent_data)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		ParachainSystem::on_finalize(System::block_number());
+
+		Crowdloan::on_finalize(System::block_number());
+		Balances::on_finalize(System::block_number());
+		System::on_finalize(System::block_number());
 		System::set_block_number(System::block_number() + 1);
+		System::on_initialize(System::block_number());
+		Balances::on_initialize(System::block_number());
+		Crowdloan::on_initialize(System::block_number());
 	}
 }
