@@ -77,7 +77,6 @@ pub mod pallet {
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
-	use polkadot_primitives::v0::Balance as RelayBalance;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
@@ -101,7 +100,7 @@ pub mod pallet {
 		/// Percentage to be payed at initialization
 		type InitializationPayment: Get<Perbill>;
 		/// The minimum contribution to which rewards will be paid.
-		type MinimumContribution: Get<BalanceOf<Self>>;
+		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
 		// TODO What trait bounds do I need here? I think concretely we would
@@ -335,8 +334,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			contributions: Vec<(T::RelayChainAccountId, Option<T::AccountId>, RelayBalance)>,
-			reward_ratio: BalanceOf<T>,
+			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 			index: u32,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
@@ -348,7 +346,7 @@ pub mod pallet {
 				Error::<T>::RewardVecAlreadyInitialized
 			);
 
-			for (relay_account, native_account, contribution) in &contributions {
+			for (relay_account, native_account, reward) in &rewards {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
 					|| UnassociatedContributions::<T>::get(&relay_account).is_some()
 				{
@@ -357,32 +355,25 @@ pub mod pallet {
 					Self::deposit_event(Event::InitializedAlreadyInitializedAccount(
 						relay_account.clone(),
 						native_account.clone(),
-						*contribution,
+						*reward,
 					));
 					continue;
 				}
 
-				let contribution_as_balance: BalanceOf<T> = (*contribution)
-					.try_into()
-					.ok()
-					.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
-
-				let total_payment = contribution_as_balance.saturating_mul(reward_ratio);
-
-				if total_payment < T::MinimumContribution::get() {
+				if *reward < T::MinimumReward::get() {
 					// Dont fail as this is supposed to be called with batch calls and we
 					// dont want to stall the rest of the contributions
 					Self::deposit_event(Event::InitializedAccountWithNotEnoughContribution(
 						relay_account.clone(),
 						native_account.clone(),
-						*contribution,
+						*reward,
 					));
 					continue;
 				}
 
 				// If we have a native_account, we make the payment
 				let initial_payment = if let Some(native_account) = native_account {
-					let first_payment = T::InitializationPayment::get() * total_payment;
+					let first_payment = T::InitializationPayment::get() * (*reward);
 					T::RewardCurrency::transfer(
 						&PALLET_ID.into_account(),
 						&native_account,
@@ -400,7 +391,7 @@ pub mod pallet {
 
 				// We need to calculate the vesting based on the relay block number
 				let reward_info = RewardInfo {
-					total_reward: total_payment,
+					total_reward: *reward,
 					claimed_reward: initial_payment,
 					last_paid: <InitRelayBlock<T>>::get().into(),
 				};
@@ -412,7 +403,7 @@ pub mod pallet {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
 				}
 			}
-			if index + contributions.len() as u32 == limit {
+			if index + rewards.len() as u32 == limit {
 				<Initialized<T>>::put(true);
 			}
 			Ok(Default::default())
@@ -432,7 +423,7 @@ pub mod pallet {
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
 		/// The contribution is not high enough to be eligible for rewards
-		ContributionNotHighEnough,
+		RewardNotHighEnough,
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided a wrong signature
 		InvalidClaimSignature,
@@ -510,13 +501,13 @@ pub mod pallet {
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
 			Option<T::AccountId>,
-			RelayBalance,
+			BalanceOf<T>,
 		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAccountWithNotEnoughContribution(
 			T::RelayChainAccountId,
 			Option<T::AccountId>,
-			RelayBalance,
+			BalanceOf<T>,
 		),
 	}
 }
