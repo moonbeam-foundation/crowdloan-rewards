@@ -280,7 +280,6 @@ pub mod pallet {
 			AccountsPayable::<T>::insert(&payee, &info);
 
 			// This pallet controls an amount of funds and transfers them to each of the contributors
-			//TODO: contributors should have the balance locked for tranfers but not for democracy
 			T::RewardCurrency::transfer(
 				&PALLET_ID.into_account(),
 				&payee,
