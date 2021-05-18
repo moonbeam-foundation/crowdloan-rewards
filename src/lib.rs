@@ -73,7 +73,6 @@ pub mod pallet {
 	use frame_support::traits::ExistenceRequirement::KeepAlive;
 	use frame_support::{dispatch::fmt::Debug, pallet_prelude::*, traits::Currency, PalletId};
 	use frame_system::pallet_prelude::*;
-	use nimbus_primitives::SlotBeacon;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::traits::{Saturating, Verify};
@@ -134,9 +133,11 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_finalize(n: T::BlockNumber) {
-			let slot = RelayChainBeacon::<T>::slot();
 			// In the first block of the parachain we need to introduce the relay block related info
 			if n == 1u32.into() {
+				let slot = cumulus_pallet_parachain_system::Module::<T>::validation_data()
+					.expect("validation data was set in parachain system inherent")
+					.relay_parent_number;
 				<InitRelayBlock<T>>::put(slot);
 			}
 		}
@@ -239,7 +240,11 @@ pub mod pallet {
 			);
 
 			// Vesting is done in relation with the relay chain slot
-			let now: T::BlockNumber = RelayChainBeacon::<T>::slot().into();
+			let now: T::BlockNumber =
+				cumulus_pallet_parachain_system::Module::<T>::validation_data()
+					.expect("validation data was set in parachain system inherent")
+					.relay_parent_number
+					.into();
 
 			// Substract the first payment from the vested amount
 			let first_paid = T::InitializationPayment::get() * info.total_reward;
@@ -273,10 +278,8 @@ pub mod pallet {
 			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
 			AccountsPayable::<T>::insert(&payee, &info);
 
-			// Make the payment
-			// TODO where are these reward funds coming from? Currently I'm just minting them right here.
-			// 1. We could have an associated type to absorb the imbalance.
-			// 2. We could have this pallet control a pot of funds, and initialize it at genesis.
+			// This pallet controls an amount of funds and transfers them to each of the contributors
+			//TODO: contributors should have the balance locked for tranfers but not for democracy
 			T::RewardCurrency::transfer(
 				&PALLET_ID.into_account(),
 				&payee,
@@ -407,14 +410,6 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: cumulus_pallet_parachain_system::Config> SlotBeacon for RelayChainBeacon<T> {
-		fn slot() -> u32 {
-			cumulus_pallet_parachain_system::Module::<T>::validation_data()
-				.expect("validation data was set in parachain system inherent")
-				.relay_parent_number
-		}
-	}
-
 	#[pallet::error]
 	pub enum Error<T> {
 		/// User trying to associate a native identity with a relay chain identity for posterior
@@ -440,17 +435,7 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		/// Contributions that have a native account id associated already.
-		pub associated: Vec<(T::RelayChainAccountId, T::AccountId, u32)>,
-		/// Contributions that will need a native account id to be associated through an extrinsic.
-		pub unassociated: Vec<(T::RelayChainAccountId, u32)>,
-		/// The ratio of (reward tokens to be paid) / (relay chain funds contributed)
-		/// This is dead stupid simple using a u32. So the reward amount has to be an integer
-		/// multiple of the contribution amount. A better fixed-ratio solution would be
-		/// https://crates.parity.io/sp_arithmetic/fixed_point/struct.FixedU128.html
-		/// We could also do something fancy and non-linear if the need arises.
-		pub reward_ratio: u32,
-		/// We could also do something fancy and non-linear if the need arises.
+		/// The amount of funds this pallet controls
 		pub funded_amount: BalanceOf<T>,
 	}
 
@@ -458,9 +443,6 @@ pub mod pallet {
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
-				associated: Vec::new(),
-				unassociated: Vec::new(),
-				reward_ratio: 1,
 				funded_amount: 1u32.into(),
 			}
 		}

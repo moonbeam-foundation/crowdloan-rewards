@@ -38,7 +38,6 @@ use sp_runtime::{
 };
 use sp_std::convert::{From, TryInto};
 
-pub type AccountId = u64;
 pub type Balance = u128;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -141,33 +140,16 @@ impl pallet_utility::Config for Test {
 	type WeightInfo = ();
 }
 
-fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
+fn genesis(funded_amount: Balance) -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
-	pallet_crowdloan_rewards::GenesisConfig::<Test> {
-		associated: vec![],
-		unassociated: vec![],
-		reward_ratio: 0,
-		funded_amount: 100000u32.into(),
-	}
-	.assimilate_storage(&mut storage)
-	.expect("Pallet balances storage can be assimilated");
+	pallet_crowdloan_rewards::GenesisConfig::<Test> { funded_amount }
+		.assimilate_storage(&mut storage)
+		.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::from(storage);
-	ext.execute_with(|| {
-		if contributions.len() > 0 {
-			Crowdloan::initialize_reward_vec(
-				Origin::root(),
-				contributions.clone(),
-				1,
-				0,
-				contributions.len() as u32,
-			)
-			.unwrap();
-		}
-		System::set_block_number(1)
-	});
+	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
 
@@ -189,7 +171,7 @@ pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 }
 
 pub(crate) fn empty() -> sp_io::TestExternalities {
-	genesis(vec![])
+	genesis(100000u32.into())
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {
