@@ -46,4 +46,5 @@ std = [
     "cumulus-primitives-core/std",
     "nimbus-primitives/std",
     "cumulus-primitives-parachain-inherent/std",
+    "polkadot-primitives/std"
     ]
