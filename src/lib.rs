@@ -70,12 +70,15 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
-	use frame_support::traits::ExistenceRequirement::KeepAlive;
-	use frame_support::{dispatch::fmt::Debug, pallet_prelude::*, traits::Currency, PalletId};
+	use frame_support::{
+		dispatch::fmt::Debug,
+		pallet_prelude::*,
+		traits::{Currency, ExistenceRequirement::KeepAlive},
+		PalletId,
+	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::traits::AccountIdConversion;
-	use sp_runtime::traits::{Saturating, Verify};
+	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
 	use sp_std::{convert::TryInto, vec::Vec};
 
@@ -90,14 +93,14 @@ pub mod pallet {
 	/// Configuration trait of this pallet.
 	#[pallet::config]
 	pub trait Config: cumulus_pallet_parachain_system::Config + frame_system::Config {
-		/// The period after which the contribution storage can be initialized again
-		type MinimumContribution: Get<BalanceOf<Self>>;
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
 		/// Percentage to be payed at initialization
 		type InitializationPayment: Get<Perbill>;
+		/// The period after which the contribution storage can be initialized again
+		type MinimumContribution: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
 		// TODO What trait bounds do I need here? I think concretely we would
@@ -129,7 +132,7 @@ pub mod pallet {
 		pub last_paid: T::BlockNumber,
 	}
 
-	// No hooks
+	// This hook is in charge of initializing the relay chain height at the first block of the parachain
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_finalize(n: T::BlockNumber) {
@@ -164,6 +167,7 @@ pub mod pallet {
 			proof: MultiSignature,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
+
 			// Check the proof:
 			// 1. Is signed by an actual unassociated contributor
 			// 2. Signs a valid native identity
@@ -287,14 +291,13 @@ pub mod pallet {
 				KeepAlive,
 			)?;
 
-			//	T::RewardCurrency::deposit_creating(&payee, payable_amount);
-
 			// Emit event
 			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
 
 			Ok(Default::default())
 		}
-		/// Collect whatever portion of your reward are currently vested.
+
+		/// Update reward address. To determine whether its something we want to keep
 		#[pallet::weight(0)]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
@@ -329,9 +332,9 @@ pub mod pallet {
 
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
-		/// This function ensures that the current block number>=NextInitialization
-		/// Also, updates NextInitialization when given index + len(contributors) = limit
-		/// TODO Should we perform sanity checks here?
+		/// We only set this to "initialized" once we receive index==limit
+		/// This is expected to be executed with batch_all, that atomically initializes contributions
+		/// TODO Should we perform sanity checks here? (i.e., min contribution)
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -450,8 +453,9 @@ pub mod pallet {
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		// This sets the funds of the crowdloan pallet
 		fn build(&self) {
-			T::RewardCurrency::make_free_balance_be(&Pallet::<T>::account_id(), self.funded_amount);
+			T::RewardCurrency::deposit_creating(&Pallet::<T>::account_id(), self.funded_amount);
 		}
 	}
 
