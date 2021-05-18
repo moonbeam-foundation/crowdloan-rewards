@@ -23,6 +23,7 @@ cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus"
 nimbus-primitives = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
 cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
 cumulus-primitives-parachain-inherent = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-v1" }
 
 [dev-dependencies]
 cumulus-test-relay-sproof-builder = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "nimbus" }

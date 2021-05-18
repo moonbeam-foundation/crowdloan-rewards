@@ -77,6 +77,7 @@ pub mod pallet {
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
+	use polkadot_primitives::v0::Balance as RelayBalance;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
@@ -122,6 +123,7 @@ pub mod pallet {
 	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
+
 	/// Stores info about the rewards owed as well as how much has been vested so far.
 	/// For a primer on this kind of design, see the recipe on compounding interest
 	/// https://substrate.dev/recipes/fixed-point.html#continuously-compounding
@@ -333,8 +335,8 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			contributions: Vec<(T::RelayChainAccountId, Option<T::AccountId>, u32)>,
-			reward_ratio: u32,
+			contributions: Vec<(T::RelayChainAccountId, Option<T::AccountId>, RelayBalance)>,
+			reward_ratio: BalanceOf<T>,
 			index: u32,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
@@ -360,8 +362,12 @@ pub mod pallet {
 					continue;
 				}
 
-				let total_payment = BalanceOf::<T>::from(*contribution)
-					.saturating_mul(BalanceOf::<T>::from(reward_ratio));
+				let contribution_as_balance: BalanceOf<T> = (*contribution)
+					.try_into()
+					.ok()
+					.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
+
+				let total_payment = contribution_as_balance.saturating_mul(reward_ratio);
 
 				if total_payment < T::MinimumContribution::get() {
 					// Dont fail as this is supposed to be called with batch calls and we
@@ -501,12 +507,16 @@ pub mod pallet {
 		/// A contributor has updated the reward address.
 		RewardAddressUpdated(T::AccountId, T::AccountId),
 		/// When initializing the reward vec an already initialized account was found
-		InitializedAlreadyInitializedAccount(T::RelayChainAccountId, Option<T::AccountId>, u32),
+		InitializedAlreadyInitializedAccount(
+			T::RelayChainAccountId,
+			Option<T::AccountId>,
+			RelayBalance,
+		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAccountWithNotEnoughContribution(
 			T::RelayChainAccountId,
 			Option<T::AccountId>,
-			u32,
+			RelayBalance,
 		),
 	}
 }
