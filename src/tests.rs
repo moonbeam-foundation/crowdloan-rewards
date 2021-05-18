@@ -361,7 +361,7 @@ fn initialize_new_addresses_with_batch() {
 	empty().execute_with(|| {
 		// This time should succeed trully
 		roll_to(10);
-		assert_ok!(mock::Call::Utility(UtilityCall::batch(vec![
+		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
 				vec![([4u8; 32].into(), Some(3), 500)],
 				1,
