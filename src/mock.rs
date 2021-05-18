@@ -16,14 +16,19 @@
 
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
-use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{GenesisBuild, OnFinalize, OnInitialize},
-	inherent::{ProvideInherent},
-	dispatch::UnfilteredDispatchable,
-};
-use cumulus_primitives_core::{relay_chain::BlockNumber as RelayChainBlockNumber};
+use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
+use cumulus_primitives_core::PersistedValidationData;
+use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+use frame_support::inherent::InherentData;
+use frame_support::{
+	construct_runtime,
+	dispatch::UnfilteredDispatchable,
+	inherent::ProvideInherent,
+	parameter_types,
+	traits::{GenesisBuild, OnFinalize, OnInitialize},
+};
+use frame_system::RawOrigin;
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
@@ -32,10 +37,6 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::convert::{From, TryInto};
-use frame_support::inherent::InherentData;
-use frame_system::RawOrigin;
-use cumulus_primitives_parachain_inherent::ParachainInherentData;
-use cumulus_primitives_core::PersistedValidationData;
 
 pub type AccountId = u64;
 pub type Balance = u128;
@@ -120,7 +121,6 @@ impl pallet_balances::Config for Test {
 parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
 	pub const TestMinimumContribution: u128 = 0;
-	pub const TestDefaultBlocksPerRound: u32 = 500;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
@@ -129,6 +129,7 @@ impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
 	type InitializationPayment = TestInitializationPayment;
+	type MinimumContribution = TestMinimumContribution;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -139,7 +140,6 @@ impl pallet_utility::Config for Test {
 	type Call = Call;
 	type WeightInfo = ();
 }
-
 
 fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

@@ -91,8 +91,6 @@ pub mod pallet {
 	/// Configuration trait of this pallet.
 	#[pallet::config]
 	pub trait Config: cumulus_pallet_parachain_system::Config + frame_system::Config {
-		/// Default number of blocks per round at genesis
-		type DefaultBlocksPerRound: Get<u32>;
 		/// The period after which the contribution storage can be initialized again
 		type MinimumContribution: Get<BalanceOf<Self>>;
 		/// The overarching event type
@@ -386,6 +384,13 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: Config> Pallet<T> {
+		/// The account ID that holds the Crowdloan's funds
+		pub fn account_id() -> T::AccountId {
+			PALLET_ID.into_account()
+		}
+	}
+
 	impl<T: cumulus_pallet_parachain_system::Config> SlotBeacon for RelayChainBeacon<T> {
 		fn slot() -> u32 {
 			cumulus_pallet_parachain_system::Module::<T>::validation_data()
@@ -447,9 +452,6 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			T::RewardCurrency::make_free_balance_be(&Pallet::<T>::account_id(), self.funded_amount);
-			let round: RoundInfo<T::BlockNumber> =
-				RoundInfo::new(1u32, 0u32.into(), T::DefaultBlocksPerRound::get());
-			<Round<T>>::put(round);
 		}
 	}
 
