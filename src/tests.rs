@@ -391,7 +391,7 @@ fn initialize_new_addresses_with_batch() {
 				0,
 				DispatchError::Module {
 					index: 2,
-					error: 4,
+					error: 5,
 					message: None,
 				},
 			),

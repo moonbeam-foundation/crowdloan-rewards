@@ -420,6 +420,8 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
+		/// The contribution is not high enough to be eligible for rewards
+		ContributionNotHighEnough,
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided a wrong signature
 		InvalidClaimSignature,
