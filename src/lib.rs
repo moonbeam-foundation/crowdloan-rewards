@@ -370,7 +370,7 @@ pub mod pallet {
 						relay_account.clone(),
 						native_account.clone(),
 						*contribution,
-						));
+					));
 					continue;
 				}
 
