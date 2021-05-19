@@ -244,7 +244,7 @@ pub mod pallet {
 				Error::<T>::RewardsAlreadyClaimed
 			);
 
-			Self::make_vested_payment(info, payee.clone())
+			Self::make_vested_payment(info, payee.clone(), true)
 		}
 
 		/// Collect whatever portion of your reward are currently vested.
@@ -259,7 +259,7 @@ pub mod pallet {
 				Error::<T>::RewardsAlreadyClaimed
 			);
 
-			Self::make_vested_payment(info, payee.clone())
+			Self::make_vested_payment(info, payee.clone(), false)
 		}
 
 		/// Update reward address. To determine whether its something we want to keep
@@ -395,17 +395,6 @@ pub mod pallet {
 		}
 	}
 
-	/// Converts the given binary data into ASCII-encoded hex. It will be twice the length.
-	pub fn to_ascii_hex(data: &[u8]) -> Vec<u8> {
-		let mut r = Vec::with_capacity(data.len() * 2);
-		let mut push_nibble = |n| r.push(if n < 10 { b'0' + n } else { b'a' - 10 + n });
-		for &b in data.iter() {
-			push_nibble(b / 16);
-			push_nibble(b % 16);
-		}
-		r
-	}
-
 	impl<T: Config> Pallet<T> {
 		/// The account ID that holds the Crowdloan's funds
 		pub fn account_id() -> T::AccountId {
@@ -415,9 +404,11 @@ pub mod pallet {
 		fn pot() -> BalanceOf<T> {
 			T::RewardCurrency::free_balance(&Self::account_id())
 		}
+		/// Make a vested payment
 		fn make_vested_payment(
 			mut info: RewardInfo<T>,
 			payee: T::AccountId,
+			is_first_payment: bool,
 		) -> DispatchResultWithPostInfo {
 			// Vesting is done in relation with the relay chain slot
 			let now: T::BlockNumber =
@@ -455,7 +446,10 @@ pub mod pallet {
 
 			// Update the stored info
 			info.last_paid = now;
-			info.free_claim_done = true;
+			// Does this come from first payment?
+			if is_first_payment {
+				info.free_claim_done = true;
+			}
 			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
 			AccountsPayable::<T>::insert(&payee, &info);
 
