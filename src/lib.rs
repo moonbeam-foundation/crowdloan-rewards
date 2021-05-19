@@ -231,18 +231,11 @@ pub mod pallet {
 		}
 
 		/// First claim for collecting vested tokens. This one is free
-		#[pallet::weight(0)]
+		#[pallet::weight((0, DispatchClass::Normal, Pays::No))]
 		pub fn my_first_claim(
 			origin: OriginFor<T>,
-			payee: T::AccountId,
-			signature: T::Signature,
 		) -> DispatchResultWithPostInfo {
-			ensure_none(origin)?;
-			let data = payee.using_encoded(to_ascii_hex);
-			ensure!(
-				signature.verify(data.as_slice(), &payee.clone().into()) == true,
-				Error::<T>::InvalidFreeClaimSignature
-			);
+			let payee = ensure_signed(origin)?;
 
 			// Calculate the vested amount on demand.
 			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;

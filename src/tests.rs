@@ -16,14 +16,11 @@
 
 //! Unit testing
 use crate::*;
-use account::{EthereumSignature, EthereumSigner};
 use frame_support::dispatch::{DispatchError, Dispatchable};
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
-use sha3::{Digest, Keccak256};
-use sp_core::{ecdsa, Pair, H160};
-use sp_runtime::traits::IdentifyAccount;
+use sp_core::{Pair, H160};
 use sp_runtime::MultiSignature;
 
 #[test]
@@ -532,31 +529,16 @@ fn initialize_new_addresses_with_batch() {
 #[test]
 fn first_free_claim_should_work() {
 	empty().execute_with(|| {
-		let secret_key = [1u8; 32];
-		let secret = secp256k1::SecretKey::parse_slice(&secret_key).unwrap();
-		let pair = ecdsa::Pair::from_seed_slice(&secret_key).unwrap();
-
-		let account: EthereumSigner = pair.public().into();
-
-		let data = account.using_encoded(to_ascii_hex);
-
-		let mut m = [0u8; 32];
-		m.copy_from_slice(Keccak256::digest(&data).as_slice());
-
-		let message = secp256k1::Message::parse(&m);
-		let signature: ecdsa::Signature = secp256k1::sign(&message, &secret).into();
-
-		let new_signature: EthereumSignature = signature.into();
 
 		roll_to(2);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(account.clone().into_account()), 1250)],
+				vec![([4u8; 32].into(), Some(H160::from([1u8; 20])), 1250)],
 				0,
 				2
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(H160::from([1u8; 20])), 1250)],
+				vec![([5u8; 32].into(), Some(H160::from([2u8; 20])), 1250)],
 				1,
 				2
 			))
@@ -564,7 +546,7 @@ fn first_free_claim_should_work() {
 		.dispatch(Origin::root()));
 
 		assert_eq!(
-			Crowdloan::accounts_payable(&account.clone().into_account())
+			Crowdloan::accounts_payable(&H160::from([2u8; 20]))
 				.unwrap()
 				.claimed_reward,
 			250u128
@@ -574,20 +556,18 @@ fn first_free_claim_should_work() {
 		roll_to(4);
 
 		assert_ok!(Crowdloan::my_first_claim(
-			Origin::none(),
-			account.clone().into_account(),
-			new_signature.clone().into()
+			Origin::signed(H160::from([2u8; 20]).into())
 		));
 
 		assert_eq!(
-			Crowdloan::accounts_payable(&account.clone().into_account())
+			Crowdloan::accounts_payable(&H160::from([2u8; 20]))
 				.unwrap()
 				.last_paid,
 			4u64
 		);
 
 		assert_eq!(
-			Crowdloan::accounts_payable(&account.clone().into_account())
+			Crowdloan::accounts_payable(&H160::from([2u8; 20]))
 				.unwrap()
 				.claimed_reward,
 			500u128
@@ -596,91 +576,9 @@ fn first_free_claim_should_work() {
 		// I cannot do this claim anymore
 		assert_noop!(
 			Crowdloan::my_first_claim(
-				Origin::none(),
-				account.clone().into_account(),
-				new_signature.into()
+				Origin::signed(H160::from([2u8; 20]).into())
 			),
 			Error::<Test>::FirstClaimAlreadyDone
-		);
-	});
-}
-
-#[test]
-fn free_claim_with_invalid_signature_does_not_work() {
-	empty().execute_with(|| {
-		let secret_key = [1u8; 32];
-		let secret_key2 = [2u8; 32];
-		let secret2 = secp256k1::SecretKey::parse_slice(&secret_key2).unwrap();
-		let pair = ecdsa::Pair::from_seed_slice(&secret_key).unwrap();
-		let pair2 = ecdsa::Pair::from_seed_slice(&secret_key2).unwrap();
-
-		let account: EthereumSigner = pair.public().into();
-		let account2: EthereumSigner = pair2.public().into();
-		let data = account.using_encoded(to_ascii_hex);
-		let data2 = account2.using_encoded(to_ascii_hex);
-
-		// We create a fake signature, account 2 signing account 1 payload
-		let mut m = [0u8; 32];
-		m.copy_from_slice(Keccak256::digest(&data).as_slice());
-
-		let message = secp256k1::Message::parse(&m);
-		let signature: ecdsa::Signature = secp256k1::sign(&message, &secret2).into();
-
-		let fake_sig: EthereumSignature = signature.into();
-
-		// We create a valid payload, accounnt 2 signing account 2
-		let mut m = [0u8; 32];
-		m.copy_from_slice(Keccak256::digest(&data2).as_slice());
-
-		let message2 = secp256k1::Message::parse(&m);
-		let signature: ecdsa::Signature = secp256k1::sign(&message2, &secret2).into();
-
-		let signature2: EthereumSignature = signature.into();
-
-		roll_to(2);
-		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(account.clone().into_account()), 1250)],
-				0,
-				2
-			)),
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(H160::from([1u8; 20])), 1250)],
-				1,
-				2
-			))
-		]))
-		.dispatch(Origin::root()));
-
-		// We made a first payment
-
-		assert_eq!(
-			Crowdloan::accounts_payable(&account.clone().into_account())
-				.unwrap()
-				.claimed_reward,
-			250u128
-		);
-
-		roll_to(4);
-
-		// Here the siganture is done signing account 1 instead of 2. Wrong sig error
-		assert_noop!(
-			Crowdloan::my_first_claim(
-				Origin::none(),
-				account2.clone().into_account(),
-				fake_sig.into()
-			),
-			Error::<Test>::InvalidFreeClaimSignature
-		);
-
-		// Correct signature but no associated claim
-		assert_noop!(
-			Crowdloan::my_first_claim(
-				Origin::none(),
-				account2.clone().into_account(),
-				signature2.into()
-			),
-			Error::<Test>::NoAssociatedClaim
 		);
 	});
 }
