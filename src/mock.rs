@@ -118,7 +118,7 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
-	pub const TestMinimumContribution: u128 = 0;
+	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
@@ -127,7 +127,7 @@ impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
 	type InitializationPayment = TestInitializationPayment;
-	type MinimumContribution = TestMinimumContribution;
+	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -170,7 +170,7 @@ pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 }
 
 pub(crate) fn empty() -> sp_io::TestExternalities {
-	genesis(100000u32.into())
+	genesis(2500u32.into())
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {

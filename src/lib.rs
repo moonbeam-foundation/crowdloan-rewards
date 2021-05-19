@@ -77,7 +77,6 @@ pub mod pallet {
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
-	use polkadot_primitives::v0::Balance as RelayBalance;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
@@ -101,7 +100,7 @@ pub mod pallet {
 		/// Percentage to be payed at initialization
 		type InitializationPayment: Get<Perbill>;
 		/// The minimum contribution to which rewards will be paid.
-		type MinimumContribution: Get<BalanceOf<Self>>;
+		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
 		// TODO What trait bounds do I need here? I think concretely we would
@@ -132,6 +131,7 @@ pub mod pallet {
 		pub total_reward: BalanceOf<T>,
 		pub claimed_reward: BalanceOf<T>,
 		pub last_paid: T::BlockNumber,
+		pub free_claim_done: bool,
 	}
 
 	// This hook is in charge of initializing the relay chain height at the first block of the parachain
@@ -227,70 +227,39 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
+		/// First claim for collecting vested tokens. This one is free
+		#[pallet::weight((0, DispatchClass::Normal, Pays::No))]
+		pub fn my_first_claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+			let payee = ensure_signed(origin)?;
+
+			// Calculate the vested amount on demand.
+			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
+
+			ensure!(
+				info.free_claim_done == false,
+				Error::<T>::FirstClaimAlreadyDone
+			);
+			ensure!(
+				info.claimed_reward < info.total_reward,
+				Error::<T>::RewardsAlreadyClaimed
+			);
+
+			Self::make_vested_payment(info, payee.clone(), true)
+		}
+
 		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(0)]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 
 			// Calculate the veted amount on demand.
-			let mut info =
-				AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
+			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
 			ensure!(
 				info.claimed_reward < info.total_reward,
 				Error::<T>::RewardsAlreadyClaimed
 			);
 
-			// Vesting is done in relation with the relay chain slot
-			let now: T::BlockNumber =
-				cumulus_pallet_parachain_system::Module::<T>::validation_data()
-					.expect("validation data was set in parachain system inherent")
-					.relay_parent_number
-					.into();
-
-			// Substract the first payment from the vested amount
-			let first_paid = T::InitializationPayment::get() * info.total_reward;
-
-			let payable_per_block = (info.total_reward - first_paid)
-				/ T::VestingPeriod::get()
-					.saturated_into::<u128>()
-					.try_into()
-					.ok()
-					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
-
-			let payable_period = now.saturating_sub(info.last_paid);
-
-			let pay_period_as_balance: BalanceOf<T> = payable_period
-				.saturated_into::<u128>()
-				.try_into()
-				.ok()
-				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
-
-			// If the period is bigger than whats missing to pay, then return whats missing to pay
-			let payable_amount = if pay_period_as_balance.saturating_mul(payable_per_block)
-				< info.total_reward.saturating_sub(info.claimed_reward)
-			{
-				pay_period_as_balance.saturating_mul(payable_per_block)
-			} else {
-				info.total_reward.saturating_sub(info.claimed_reward)
-			};
-
-			// Update the stored info
-			info.last_paid = now;
-			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
-			AccountsPayable::<T>::insert(&payee, &info);
-
-			// This pallet controls an amount of funds and transfers them to each of the contributors
-			T::RewardCurrency::transfer(
-				&PALLET_ID.into_account(),
-				&payee,
-				payable_amount,
-				KeepAlive,
-			)?;
-
-			// Emit event
-			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
-
-			Ok(Default::default())
+			Self::make_vested_payment(info, payee.clone(), false)
 		}
 
 		/// Update reward address. To determine whether its something we want to keep
@@ -334,8 +303,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			contributions: Vec<(T::RelayChainAccountId, Option<T::AccountId>, RelayBalance)>,
-			reward_ratio: BalanceOf<T>,
+			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 			index: u32,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
@@ -347,7 +315,7 @@ pub mod pallet {
 				Error::<T>::RewardVecAlreadyInitialized
 			);
 
-			for (relay_account, native_account, contribution) in &contributions {
+			for (relay_account, native_account, reward) in &rewards {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
 					|| UnassociatedContributions::<T>::get(&relay_account).is_some()
 				{
@@ -356,32 +324,25 @@ pub mod pallet {
 					Self::deposit_event(Event::InitializedAlreadyInitializedAccount(
 						relay_account.clone(),
 						native_account.clone(),
-						*contribution,
+						*reward,
 					));
 					continue;
 				}
 
-				let contribution_as_balance: BalanceOf<T> = (*contribution)
-					.try_into()
-					.ok()
-					.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
-
-				let total_payment = contribution_as_balance.saturating_mul(reward_ratio);
-
-				if total_payment < T::MinimumContribution::get() {
+				if *reward < T::MinimumReward::get() {
 					// Dont fail as this is supposed to be called with batch calls and we
 					// dont want to stall the rest of the contributions
 					Self::deposit_event(Event::InitializedAccountWithNotEnoughContribution(
 						relay_account.clone(),
 						native_account.clone(),
-						*contribution,
+						*reward,
 					));
 					continue;
 				}
 
 				// If we have a native_account, we make the payment
 				let initial_payment = if let Some(native_account) = native_account {
-					let first_payment = T::InitializationPayment::get() * total_payment;
+					let first_payment = T::InitializationPayment::get() * (*reward);
 					T::RewardCurrency::transfer(
 						&PALLET_ID.into_account(),
 						&native_account,
@@ -399,9 +360,10 @@ pub mod pallet {
 
 				// We need to calculate the vesting based on the relay block number
 				let reward_info = RewardInfo {
-					total_reward: total_payment,
+					total_reward: *reward,
 					claimed_reward: initial_payment,
 					last_paid: <InitRelayBlock<T>>::get().into(),
+					free_claim_done: false,
 				};
 
 				if let Some(native_account) = native_account {
@@ -411,7 +373,22 @@ pub mod pallet {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
 				}
 			}
-			if index + contributions.len() as u32 == limit {
+			// Let's ensure we can close initialization
+			if index + rewards.len() as u32 == limit {
+				let claimed_rewards = AccountsPayable::<T>::iter().fold(
+					0u32.into(),
+					|acc: BalanceOf<T>, (_, reward_info)| {
+						acc + reward_info.total_reward - reward_info.claimed_reward
+					},
+				);
+				let unassociated_rewards = UnassociatedContributions::<T>::iter()
+					.fold(0u32.into(), |acc: BalanceOf<T>, (_, reward_info)| {
+						acc + reward_info.total_reward
+					});
+				ensure!(
+					claimed_rewards + unassociated_rewards == Self::pot(),
+					Error::<T>::RewardsDoNotMatchFund
+				);
 				<Initialized<T>>::put(true);
 			}
 			Ok(Default::default())
@@ -423,6 +400,71 @@ pub mod pallet {
 		pub fn account_id() -> T::AccountId {
 			PALLET_ID.into_account()
 		}
+		/// The Account Id's balance
+		fn pot() -> BalanceOf<T> {
+			T::RewardCurrency::free_balance(&Self::account_id())
+		}
+		/// Make a vested payment
+		fn make_vested_payment(
+			mut info: RewardInfo<T>,
+			payee: T::AccountId,
+			is_first_payment: bool,
+		) -> DispatchResultWithPostInfo {
+			// Vesting is done in relation with the relay chain slot
+			let now: T::BlockNumber =
+				cumulus_pallet_parachain_system::Module::<T>::validation_data()
+					.expect("validation data was set in parachain system inherent")
+					.relay_parent_number
+					.into();
+
+			// Substract the first payment from the vested amount
+			let first_paid = T::InitializationPayment::get() * info.total_reward;
+
+			let payable_per_block = (info.total_reward - first_paid)
+				/ T::VestingPeriod::get()
+					.saturated_into::<u128>()
+					.try_into()
+					.ok()
+					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
+
+			let payable_period = now.saturating_sub(info.last_paid);
+
+			let pay_period_as_balance: BalanceOf<T> = payable_period
+				.saturated_into::<u128>()
+				.try_into()
+				.ok()
+				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
+
+			// If the period is bigger than whats missing to pay, then return whats missing to pay
+			let payable_amount = if pay_period_as_balance.saturating_mul(payable_per_block)
+				< info.total_reward.saturating_sub(info.claimed_reward)
+			{
+				pay_period_as_balance.saturating_mul(payable_per_block)
+			} else {
+				info.total_reward.saturating_sub(info.claimed_reward)
+			};
+
+			// Update the stored info
+			info.last_paid = now;
+			// Does this come from first payment?
+			if is_first_payment {
+				info.free_claim_done = true;
+			}
+			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
+			AccountsPayable::<T>::insert(&payee, &info);
+
+			// This pallet controls an amount of funds and transfers them to each of the contributors
+			//TODO: contributors should have the balance locked for tranfers but not for democracy
+			T::RewardCurrency::transfer(
+				&PALLET_ID.into_account(),
+				&payee,
+				payable_amount,
+				KeepAlive,
+			)?;
+			// Emit event
+			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
+			Ok(Default::default())
+		}
 	}
 
 	#[pallet::error]
@@ -430,11 +472,15 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
+		/// First claim already done
+		FirstClaimAlreadyDone,
 		/// The contribution is not high enough to be eligible for rewards
-		ContributionNotHighEnough,
+		RewardNotHighEnough,
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided a wrong signature
 		InvalidClaimSignature,
+		/// User trying to claim the first free reward provided the wrong signature
+		InvalidFreeClaimSignature,
 		/// User trying to claim an award did not have an claim associated with it. This may mean
 		/// they did not contribute to the crowdloan, or they have not yet associated a native id
 		/// with their contribution
@@ -444,6 +490,8 @@ pub mod pallet {
 		RewardsAlreadyClaimed,
 		/// Reward vec has already been initialized
 		RewardVecAlreadyInitialized,
+		/// Reward vec has already been initialized
+		RewardsDoNotMatchFund,
 		/// Invalid conversion while calculating payable amount
 		WrongConversionU128ToBalance,
 	}
@@ -509,13 +557,13 @@ pub mod pallet {
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
 			Option<T::AccountId>,
-			RelayBalance,
+			BalanceOf<T>,
 		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAccountWithNotEnoughContribution(
 			T::RelayChainAccountId,
 			Option<T::AccountId>,
-			RelayBalance,
+			BalanceOf<T>,
 		),
 	}
 }
