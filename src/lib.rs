@@ -70,7 +70,6 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
-	use frame_support::sp_runtime::traits::IdentifyAccount;
 	use frame_support::{
 		dispatch::fmt::Debug,
 		pallet_prelude::*,
@@ -94,8 +93,6 @@ pub mod pallet {
 	/// Configuration trait of this pallet.
 	#[pallet::config]
 	pub trait Config: cumulus_pallet_parachain_system::Config + frame_system::Config {
-		type Public: IdentifyAccount<AccountId = Self::AccountId>;
-		type Signature: Verify<Signer = Self::Public> + Member + Decode + Encode;
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Checker for the reward vec, is it initalized already?
@@ -231,18 +228,9 @@ pub mod pallet {
 		}
 
 		/// First claim for collecting vested tokens. This one is free
-		#[pallet::weight(0)]
-		pub fn my_first_claim(
-			origin: OriginFor<T>,
-			payee: T::AccountId,
-			signature: T::Signature,
-		) -> DispatchResultWithPostInfo {
-			ensure_none(origin)?;
-			let data = payee.using_encoded(to_ascii_hex);
-			ensure!(
-				signature.verify(data.as_slice(), &payee.clone().into()) == true,
-				Error::<T>::InvalidFreeClaimSignature
-			);
+		#[pallet::weight((0, DispatchClass::Normal, Pays::No))]
+		pub fn my_first_claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+			let payee = ensure_signed(origin)?;
 
 			// Calculate the vested amount on demand.
 			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;

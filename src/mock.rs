@@ -30,7 +30,6 @@ use frame_support::{
 use frame_system::RawOrigin;
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
-use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -39,11 +38,9 @@ use sp_runtime::{
 use sp_std::convert::{From, TryInto};
 
 pub type Balance = u128;
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-
-pub type Signature = account::EthereumSignature;
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 construct_runtime!(
 	pub enum Test where
@@ -89,7 +86,7 @@ impl frame_system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
+	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
@@ -127,8 +124,6 @@ parameter_types! {
 }
 
 impl Config for Test {
-	type Public = account::EthereumSigner;
-	type Signature = Signature;
 	type Event = Event;
 	type Initialized = TestInitialized;
 	type InitializationPayment = TestInitializationPayment;
