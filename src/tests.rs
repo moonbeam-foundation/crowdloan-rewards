@@ -16,11 +16,12 @@
 
 //! Unit testing
 use crate::*;
-use account::{EthereumSigner, SubstrateSignature};
+use account::{EthereumSignature, EthereumSigner};
 use frame_support::dispatch::{DispatchError, Dispatchable};
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
+use sha3::{Digest, Keccak256};
 use sp_core::{ecdsa, Pair, H160};
 use sp_runtime::traits::IdentifyAccount;
 use sp_runtime::MultiSignature;
@@ -531,13 +532,21 @@ fn initialize_new_addresses_with_batch() {
 #[test]
 fn first_free_claim_should_work() {
 	empty().execute_with(|| {
-		let (pair, _) = ecdsa::Pair::generate();
+		let secret_key = [1u8; 32];
+		let secret = secp256k1::SecretKey::parse_slice(&secret_key).unwrap();
+		let pair = ecdsa::Pair::from_seed_slice(&secret_key).unwrap();
 
 		let account: EthereumSigner = pair.public().into();
 
 		let data = account.using_encoded(to_ascii_hex);
 
-		let signature: SubstrateSignature = pair.sign(&data).into();
+		let mut m = [0u8; 32];
+		m.copy_from_slice(Keccak256::digest(&data).as_slice());
+
+		let message = secp256k1::Message::parse(&m);
+		let signature: ecdsa::Signature = secp256k1::sign(&message, &secret).into();
+
+		let new_signature: EthereumSignature = signature.into();
 
 		roll_to(2);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
@@ -567,7 +576,7 @@ fn first_free_claim_should_work() {
 		assert_ok!(Crowdloan::my_first_claim(
 			Origin::none(),
 			account.clone().into_account(),
-			signature.clone().into()
+			new_signature.clone().into()
 		));
 
 		assert_eq!(
@@ -589,7 +598,7 @@ fn first_free_claim_should_work() {
 			Crowdloan::my_first_claim(
 				Origin::none(),
 				account.clone().into_account(),
-				signature.into()
+				new_signature.into()
 			),
 			Error::<Test>::FirstClaimAlreadyDone
 		);
@@ -599,16 +608,34 @@ fn first_free_claim_should_work() {
 #[test]
 fn free_claim_with_invalid_signature_does_not_work() {
 	empty().execute_with(|| {
-		let (pair, _) = ecdsa::Pair::generate();
-		let (pair2, _) = ecdsa::Pair::generate();
+		let secret_key = [1u8; 32];
+		let secret_key2 = [2u8; 32];
+		let secret2 = secp256k1::SecretKey::parse_slice(&secret_key2).unwrap();
+		let pair = ecdsa::Pair::from_seed_slice(&secret_key).unwrap();
+		let pair2 = ecdsa::Pair::from_seed_slice(&secret_key2).unwrap();
 
 		let account: EthereumSigner = pair.public().into();
 		let account2: EthereumSigner = pair2.public().into();
 		let data = account.using_encoded(to_ascii_hex);
 		let data2 = account2.using_encoded(to_ascii_hex);
 
-		let fake_sig: SubstrateSignature = pair2.sign(&data).into();
-		let signature2: SubstrateSignature = pair2.sign(&data2).into();
+		// We create a fake signature, account 2 signing account 1 payload
+		let mut m = [0u8; 32];
+		m.copy_from_slice(Keccak256::digest(&data).as_slice());
+
+		let message = secp256k1::Message::parse(&m);
+		let signature: ecdsa::Signature = secp256k1::sign(&message, &secret2).into();
+
+		let fake_sig: EthereumSignature = signature.into();
+
+		// We create a valid payload, accounnt 2 signing account 2
+		let mut m = [0u8; 32];
+		m.copy_from_slice(Keccak256::digest(&data2).as_slice());
+
+		let message2 = secp256k1::Message::parse(&m);
+		let signature: ecdsa::Signature = secp256k1::sign(&message2, &secret2).into();
+
+		let signature2: EthereumSignature = signature.into();
 
 		roll_to(2);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
