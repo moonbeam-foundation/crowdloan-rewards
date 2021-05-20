@@ -70,6 +70,7 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
+	use frame_support::weights::PostDispatchInfo;
 	use frame_support::{
 		dispatch::fmt::Debug,
 		pallet_prelude::*,
@@ -229,32 +230,8 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// First claim for collecting vested tokens. This one is free
-		#[pallet::weight((0, DispatchClass::Normal, Pays::No))]
-		pub fn my_first_claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-			let payee = ensure_signed(origin)?;
-			// Ensure the reward mapping has been fully initialized
-			let initialized = <Initialized<T>>::get();
-			ensure!(
-				initialized == true,
-				Error::<T>::RewardVecNotFullyInitializedYet
-			);
-			// Calculate the vested amount on demand.
-			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
-
-			ensure!(
-				info.free_claim_done == false,
-				Error::<T>::FirstClaimAlreadyDone
-			);
-			ensure!(
-				info.claimed_reward < info.total_reward,
-				Error::<T>::RewardsAlreadyClaimed
-			);
-
-			Self::make_vested_payment(info, payee.clone(), true)
-		}
-
-		/// Collect whatever portion of your reward are currently vested.
+		/// Collect whatever portion of your reward are currently vested. The first time each
+		/// contributor calls this function pays no fees
 		#[pallet::weight(0)]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
@@ -264,15 +241,75 @@ pub mod pallet {
 				Error::<T>::RewardVecNotFullyInitializedYet
 			);
 			// Calculate the veted amount on demand.
-			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
+			let mut info =
+				AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
 			ensure!(
 				info.claimed_reward < info.total_reward,
 				Error::<T>::RewardsAlreadyClaimed
 			);
 
-			Self::make_vested_payment(info, payee.clone(), false)
-		}
+			// Vesting is done in relation with the relay chain slot
+			let now: T::BlockNumber =
+				cumulus_pallet_parachain_system::Module::<T>::validation_data()
+					.expect("validation data was set in parachain system inherent")
+					.relay_parent_number
+					.into();
 
+			// Substract the first payment from the vested amount
+			let first_paid = T::InitializationPayment::get() * info.total_reward;
+
+			let payable_per_block = (info.total_reward - first_paid)
+				/ T::VestingPeriod::get()
+					.saturated_into::<u128>()
+					.try_into()
+					.ok()
+					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
+
+			let payable_period = now.saturating_sub(info.last_paid);
+
+			let pay_period_as_balance: BalanceOf<T> = payable_period
+				.saturated_into::<u128>()
+				.try_into()
+				.ok()
+				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
+
+			// If the period is bigger than whats missing to pay, then return whats missing to pay
+			let payable_amount = if pay_period_as_balance.saturating_mul(payable_per_block)
+				< info.total_reward.saturating_sub(info.claimed_reward)
+			{
+				pay_period_as_balance.saturating_mul(payable_per_block)
+			} else {
+				info.total_reward.saturating_sub(info.claimed_reward)
+			};
+
+			// Update the stored info
+			info.last_paid = now;
+			// Does this come from first payment?
+			let result: PostDispatchInfo = if !info.free_claim_done {
+				info.free_claim_done = true;
+				PostDispatchInfo {
+					actual_weight: Some(0),
+					pays_fee: Pays::No,
+				}
+			} else {
+				Default::default()
+			};
+
+			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
+			AccountsPayable::<T>::insert(&payee, &info);
+
+			// This pallet controls an amount of funds and transfers them to each of the contributors
+			//TODO: contributors should have the balance locked for tranfers but not for democracy
+			T::RewardCurrency::transfer(
+				&PALLET_ID.into_account(),
+				&payee,
+				payable_amount,
+				KeepAlive,
+			)?;
+			// Emit event
+			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
+			Ok(result)
+		}
 		/// Update reward address. To determine whether its something we want to keep
 		#[pallet::weight(0)]
 		pub fn update_reward_address(
@@ -431,67 +468,6 @@ pub mod pallet {
 		/// The Account Id's balance
 		fn pot() -> BalanceOf<T> {
 			T::RewardCurrency::free_balance(&Self::account_id())
-		}
-		/// Make a vested payment
-		fn make_vested_payment(
-			mut info: RewardInfo<T>,
-			payee: T::AccountId,
-			is_first_payment: bool,
-		) -> DispatchResultWithPostInfo {
-			// Vesting is done in relation with the relay chain slot
-			let now: T::BlockNumber =
-				cumulus_pallet_parachain_system::Module::<T>::validation_data()
-					.expect("validation data was set in parachain system inherent")
-					.relay_parent_number
-					.into();
-
-			// Substract the first payment from the vested amount
-			let first_paid = T::InitializationPayment::get() * info.total_reward;
-
-			let payable_per_block = (info.total_reward - first_paid)
-				/ T::VestingPeriod::get()
-					.saturated_into::<u128>()
-					.try_into()
-					.ok()
-					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
-
-			let payable_period = now.saturating_sub(info.last_paid);
-
-			let pay_period_as_balance: BalanceOf<T> = payable_period
-				.saturated_into::<u128>()
-				.try_into()
-				.ok()
-				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
-
-			// If the period is bigger than whats missing to pay, then return whats missing to pay
-			let payable_amount = if pay_period_as_balance.saturating_mul(payable_per_block)
-				< info.total_reward.saturating_sub(info.claimed_reward)
-			{
-				pay_period_as_balance.saturating_mul(payable_per_block)
-			} else {
-				info.total_reward.saturating_sub(info.claimed_reward)
-			};
-
-			// Update the stored info
-			info.last_paid = now;
-			// Does this come from first payment?
-			if is_first_payment {
-				info.free_claim_done = true;
-			}
-			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
-			AccountsPayable::<T>::insert(&payee, &info);
-
-			// This pallet controls an amount of funds and transfers them to each of the contributors
-			//TODO: contributors should have the balance locked for tranfers but not for democracy
-			T::RewardCurrency::transfer(
-				&PALLET_ID.into_account(),
-				&payee,
-				payable_amount,
-				KeepAlive,
-			)?;
-			// Emit event
-			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
-			Ok(Default::default())
 		}
 	}
 
