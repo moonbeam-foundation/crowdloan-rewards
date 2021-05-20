@@ -98,6 +98,7 @@ pub mod pallet {
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
 		/// Percentage to be payed at initialization
+		#[pallet::constant]
 		type InitializationPayment: Get<Perbill>;
 		/// The minimum contribution to which rewards will be paid.
 		type MinimumReward: Get<BalanceOf<Self>>;
@@ -116,6 +117,7 @@ pub mod pallet {
 
 		/// The total vesting period. Ideally this should be less than the lease period to ensure
 		/// there is no overlap between contributors from two different auctions
+		#[pallet::constant]
 		type VestingPeriod: Get<Self::BlockNumber>;
 	}
 
@@ -231,7 +233,12 @@ pub mod pallet {
 		#[pallet::weight((0, DispatchClass::Normal, Pays::No))]
 		pub fn my_first_claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
-
+			// Ensure the reward mapping has been fully initialized
+			let initialized = <Initialized<T>>::get();
+			ensure!(
+				initialized == true,
+				Error::<T>::RewardVecNotFullyInitializedYet
+			);
 			// Calculate the vested amount on demand.
 			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
 
@@ -251,7 +258,11 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
-
+			let initialized = <Initialized<T>>::get();
+			ensure!(
+				initialized == true,
+				Error::<T>::RewardVecNotFullyInitializedYet
+			);
 			// Calculate the veted amount on demand.
 			let info = AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
 			ensure!(
@@ -308,12 +319,43 @@ pub mod pallet {
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
-			//let now = frame_system::Pallet::<T>::block_number();
 			let initialized = <Initialized<T>>::get();
 			ensure!(
 				initialized == false,
 				Error::<T>::RewardVecAlreadyInitialized
 			);
+
+			let claimed_rewards = AccountsPayable::<T>::iter().fold(
+				0u32.into(),
+				|acc: BalanceOf<T>, (_, reward_info)| {
+					acc + reward_info.total_reward - reward_info.claimed_reward
+				},
+			);
+
+			let unassociated_rewards = UnassociatedContributions::<T>::iter()
+				.fold(0u32.into(), |acc: BalanceOf<T>, (_, reward_info)| {
+					acc + reward_info.total_reward
+				});
+
+			let incoming_rewards: BalanceOf<T> = rewards
+				.iter()
+				.fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {
+					acc + *reward
+				});
+
+			// Ensure we dont go over funds
+			ensure!(
+				claimed_rewards + unassociated_rewards + incoming_rewards <= Self::pot(),
+				Error::<T>::BatchBeyondFundPot
+			);
+
+			// Let's ensure we can close initialization
+			if index + rewards.len() as u32 == limit {
+				ensure!(
+					claimed_rewards + unassociated_rewards + incoming_rewards == Self::pot(),
+					Error::<T>::RewardsDoNotMatchFund
+				);
+			}
 
 			for (relay_account, native_account, reward) in &rewards {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
@@ -375,20 +417,6 @@ pub mod pallet {
 			}
 			// Let's ensure we can close initialization
 			if index + rewards.len() as u32 == limit {
-				let claimed_rewards = AccountsPayable::<T>::iter().fold(
-					0u32.into(),
-					|acc: BalanceOf<T>, (_, reward_info)| {
-						acc + reward_info.total_reward - reward_info.claimed_reward
-					},
-				);
-				let unassociated_rewards = UnassociatedContributions::<T>::iter()
-					.fold(0u32.into(), |acc: BalanceOf<T>, (_, reward_info)| {
-						acc + reward_info.total_reward
-					});
-				ensure!(
-					claimed_rewards + unassociated_rewards == Self::pot(),
-					Error::<T>::RewardsDoNotMatchFund
-				);
 				<Initialized<T>>::put(true);
 			}
 			Ok(Default::default())
@@ -472,6 +500,8 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
+		/// Trying to introduce a batch that goes beyond the limits of the funds
+		BatchBeyondFundPot,
 		/// First claim already done
 		FirstClaimAlreadyDone,
 		/// The contribution is not high enough to be eligible for rewards
@@ -490,6 +520,8 @@ pub mod pallet {
 		RewardsAlreadyClaimed,
 		/// Reward vec has already been initialized
 		RewardVecAlreadyInitialized,
+		/// Reward vec has not yet been fully initialized
+		RewardVecNotFullyInitializedYet,
 		/// Reward vec has already been initialized
 		RewardsDoNotMatchFund,
 		/// Invalid conversion while calculating payable amount
