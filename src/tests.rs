@@ -17,7 +17,6 @@
 //! Unit testing
 use crate::*;
 use frame_support::dispatch::{DispatchError, Dispatchable};
-use frame_support::weights::Pays;
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
@@ -449,50 +448,153 @@ fn initialize_new_addresses_with_batch() {
 }
 
 #[test]
-fn first_free_claim_should_work() {
+fn floating_point_arithmetic_works() {
 	empty().execute_with(|| {
 		roll_to(2);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(1), 1250)],
+				vec![([4u8; 32].into(), Some(1), 1190)],
 				0,
-				2
+				3
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(2), 1250)],
+				vec![([5u8; 32].into(), Some(2), 1185)],
 				1,
-				2
+				3
+			)),
+			// We will work with this. This has 100/8=12.5 payable per block
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+				vec![([3u8; 32].into(), Some(3), 125)],
+				2,
+				3
 			))
 		]))
 		.dispatch(Origin::root()));
 
 		assert_eq!(
-			Crowdloan::accounts_payable(&2).unwrap().claimed_reward,
-			250u128
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			25u128
 		);
 
 		// Block relay number is 2 post init initialization
+		// In this case there is no problem. Here we pay 12.5*2=25
+		// Total claimed reward: 25+25 = 50
 		roll_to(4);
 
-		// First one is free
-		let post_info = Crowdloan::show_me_the_money(Origin::signed(2)).unwrap();
-
-		assert_eq!(post_info.pays_fee, Pays::No);
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
 
 		assert_eq!(
-			Crowdloan::accounts_payable(&2).unwrap().claimed_reward,
-			500u128
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			50u128
+		);
+		roll_to(5);
+		// If we claim now we have to pay 12.5. 12 will be paid.
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			62u128
+		);
+		roll_to(6);
+		// Now we should pay 12.5. However the calculus will be:
+		// Account 3 should have claimed 50 + 25 at this block, but
+		// he only claimed 62. The payment is 13
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			75u128
+		);
+		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 238),
+			crate::Event::InitialPaymentMade(2, 237),
+			crate::Event::InitialPaymentMade(3, 25),
+			crate::Event::RewardsPaid(3, 25),
+			crate::Event::RewardsPaid(3, 12),
+			crate::Event::RewardsPaid(3, 13),
+		];
+		assert_eq!(events(), expected);
+	});
+}
+
+#[test]
+fn reward_below_vesting_period_works() {
+	empty().execute_with(|| {
+		roll_to(2);
+		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+				vec![([4u8; 32].into(), Some(1), 1247)],
+				0,
+				3
+			)),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+				vec![([5u8; 32].into(), Some(2), 1247)],
+				1,
+				3
+			)),
+			// We will work with this. This has 5/8=0.625 payable per block
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
+				vec![([3u8; 32].into(), Some(3), 6)],
+				2,
+				3
+			))
+		]))
+		.dispatch(Origin::root()));
+
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			1u128
 		);
 
 		// Block relay number is 2 post init initialization
-		roll_to(6);
+		// Here we should pay floor(0.625*2)=1
+		// Total claimed reward: 1+1 = 2
+		roll_to(4);
 
-		// Second one is not
-		let post_info = Crowdloan::show_me_the_money(Origin::signed(2)).unwrap();
-		assert_eq!(post_info.pays_fee, Pays::Yes);
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+
 		assert_eq!(
-			Crowdloan::accounts_payable(&2).unwrap().claimed_reward,
-			750u128
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			2u128
 		);
+		roll_to(5);
+		// If we claim now we have to pay floor(0.625) = 0
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			2u128
+		);
+		roll_to(6);
+		// Now we should pay 1 again. The claimer should have claimed floor(0.625*4) + 1
+		// but he only claimed 2
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			3u128
+		);
+		roll_to(10);
+		// We pay the remaining
+		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_eq!(
+			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
+			6u128
+		);
+		roll_to(11);
+		// Nothing more to claim
+		assert_noop!(
+			Crowdloan::show_me_the_money(Origin::signed(3)),
+			Error::<Test>::RewardsAlreadyClaimed
+		);
+
+		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 249),
+			crate::Event::InitialPaymentMade(2, 249),
+			crate::Event::InitialPaymentMade(3, 1),
+			crate::Event::RewardsPaid(3, 1),
+			crate::Event::RewardsPaid(3, 0),
+			crate::Event::RewardsPaid(3, 1),
+			crate::Event::RewardsPaid(3, 3),
+		];
+		assert_eq!(events(), expected);
 	});
 }

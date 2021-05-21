@@ -258,13 +258,13 @@ pub mod pallet {
 			let first_paid = T::InitializationPayment::get() * info.total_reward;
 
 			// Vesting perdiods as u32
-
 			let vesting_period = T::VestingPeriod::get()
 				.saturated_into::<u128>()
 				.try_into()
 				.ok()
 				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
 
+			// 	To calculate how much could the user have claimed already
 			let payable_period = now.saturating_sub(<InitRelayBlock<T>>::get().into());
 
 			let pay_period_as_balance: BalanceOf<T> = payable_period
@@ -273,15 +273,11 @@ pub mod pallet {
 				.ok()
 				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
 
-			// How much should the contributor have already gained?
+			// How much should the contributor have already claimed by this block?
+			// By multiplying first we allow the conversion to integer done with the biggest number
 			let should_have_claimed = pay_period_as_balance
 				.saturating_mul(info.total_reward - first_paid)
 				/ vesting_period;
-			println!("Should have paid {:?}", should_have_claimed);
-			println!("Total Reward {:?}", info.total_reward);
-			println!("First Paid {:?}", first_paid);
-			println!("Vesting Period {:?}", vesting_period);
-			println!("pay_period_as_balance{:?}", pay_period_as_balance);
 
 			// If the period is bigger than whats missing to pay, then return whats missing to pay
 			let payable_amount = if should_have_claimed >= info.total_reward {
