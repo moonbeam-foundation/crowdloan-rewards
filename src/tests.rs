@@ -17,8 +17,8 @@
 //! Unit testing
 use crate::*;
 use frame_support::dispatch::{DispatchError, Dispatchable};
-use frame_support::{assert_noop, assert_ok};
 use frame_support::weights::Pays;
+use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
 use sp_core::Pair;
@@ -630,7 +630,7 @@ fn first_free_claim_should_work() {
 		let post_info = Crowdloan::show_me_the_money(Origin::signed(2)).unwrap();
 
 		assert_eq!(post_info.pays_fee, Pays::No);
-		
+
 		assert_eq!(
 			Crowdloan::accounts_payable(&2).unwrap().claimed_reward,
 			500u128
