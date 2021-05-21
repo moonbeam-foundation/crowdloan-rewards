@@ -257,14 +257,14 @@ pub mod pallet {
 			// Substract the first payment from the vested amount
 			let first_paid = T::InitializationPayment::get() * info.total_reward;
 
-			// Vesting perdiods as u32
+			// Vesting perdiods as balance
 			let vesting_period = T::VestingPeriod::get()
 				.saturated_into::<u128>()
 				.try_into()
 				.ok()
 				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
 
-			// 	To calculate how much could the user have claimed already
+			// To calculate how much could the user have claimed already
 			let payable_period = now.saturating_sub(<InitRelayBlock<T>>::get().into());
 
 			let pay_period_as_balance: BalanceOf<T> = payable_period
@@ -286,7 +286,7 @@ pub mod pallet {
 				should_have_claimed + first_paid - info.claimed_reward
 			};
 
-			// Does this come from first payment?
+			// If first payment does not pay fees
 			let result: PostDispatchInfo = if !info.free_claim_done {
 				info.free_claim_done = true;
 				PostDispatchInfo {
