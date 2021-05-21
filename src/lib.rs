@@ -74,7 +74,7 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::fmt::Debug,
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement::KeepAlive},
+		traits::{Currency, ExistenceRequirement::AllowDeath},
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
@@ -200,7 +200,7 @@ pub mod pallet {
 				&PALLET_ID.into_account(),
 				&reward_account,
 				first_payment,
-				KeepAlive,
+				AllowDeath,
 			)?;
 
 			Self::deposit_event(Event::InitialPaymentMade(
@@ -306,7 +306,7 @@ pub mod pallet {
 				&PALLET_ID.into_account(),
 				&payee,
 				payable_amount,
-				KeepAlive,
+				AllowDeath,
 			)?;
 			// Emit event
 			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
@@ -428,7 +428,7 @@ pub mod pallet {
 						&PALLET_ID.into_account(),
 						&native_account,
 						first_payment,
-						KeepAlive,
+						AllowDeath,
 					)?;
 					Self::deposit_event(Event::InitialPaymentMade(
 						native_account.clone(),
