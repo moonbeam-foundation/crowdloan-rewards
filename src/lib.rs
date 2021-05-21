@@ -133,7 +133,6 @@ pub mod pallet {
 	pub struct RewardInfo<T: Config> {
 		pub total_reward: BalanceOf<T>,
 		pub claimed_reward: BalanceOf<T>,
-		pub last_paid: T::BlockNumber,
 		pub free_claim_done: bool,
 	}
 
@@ -258,14 +257,15 @@ pub mod pallet {
 			// Substract the first payment from the vested amount
 			let first_paid = T::InitializationPayment::get() * info.total_reward;
 
-			let payable_per_block = (info.total_reward - first_paid)
-				/ T::VestingPeriod::get()
-					.saturated_into::<u128>()
-					.try_into()
-					.ok()
-					.ok_or(Error::<T>::WrongConversionU128ToBalance)?; //TODO safe math;
+			// Vesting perdiods as u32
 
-			let payable_period = now.saturating_sub(info.last_paid);
+			let vesting_period = T::VestingPeriod::get()
+				.saturated_into::<u128>()
+				.try_into()
+				.ok()
+				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
+
+			let payable_period = now.saturating_sub(<InitRelayBlock<T>>::get().into());
 
 			let pay_period_as_balance: BalanceOf<T> = payable_period
 				.saturated_into::<u128>()
@@ -273,17 +273,23 @@ pub mod pallet {
 				.ok()
 				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
 
+			// How much should the contributor have already gained?
+			let should_have_claimed = pay_period_as_balance
+				.saturating_mul(info.total_reward - first_paid)
+				/ vesting_period;
+			println!("Should have paid {:?}", should_have_claimed);
+			println!("Total Reward {:?}", info.total_reward);
+			println!("First Paid {:?}", first_paid);
+			println!("Vesting Period {:?}", vesting_period);
+			println!("pay_period_as_balance{:?}", pay_period_as_balance);
+
 			// If the period is bigger than whats missing to pay, then return whats missing to pay
-			let payable_amount = if pay_period_as_balance.saturating_mul(payable_per_block)
-				< info.total_reward.saturating_sub(info.claimed_reward)
-			{
-				pay_period_as_balance.saturating_mul(payable_per_block)
-			} else {
+			let payable_amount = if should_have_claimed >= info.total_reward {
 				info.total_reward.saturating_sub(info.claimed_reward)
+			} else {
+				should_have_claimed + first_paid - info.claimed_reward
 			};
 
-			// Update the stored info
-			info.last_paid = now;
 			// Does this come from first payment?
 			let result: PostDispatchInfo = if !info.free_claim_done {
 				info.free_claim_done = true;
@@ -441,7 +447,6 @@ pub mod pallet {
 				let reward_info = RewardInfo {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
-					last_paid: <InitRelayBlock<T>>::get().into(),
 					free_claim_done: false,
 				};
 
