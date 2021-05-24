@@ -231,7 +231,7 @@ pub mod pallet {
 
 		/// Collect whatever portion of your reward are currently vested. The first time each
 		/// contributor calls this function pays no fees
-		#[pallet::weight(0)]
+		#[pallet::weight(1000)]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -294,7 +294,10 @@ pub mod pallet {
 					pays_fee: Pays::No,
 				}
 			} else {
-				Default::default()
+				PostDispatchInfo {
+					actual_weight: Some(100),
+					pays_fee: Pays::Yes,
+				}
 			};
 
 			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
