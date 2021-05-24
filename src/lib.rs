@@ -228,7 +228,7 @@ pub mod pallet {
 		}
 
 		/// First claim for collecting vested tokens. This one is free
-		#[pallet::weight((0, DispatchClass::Normal, Pays::No))]
+		#[pallet::weight((1000, DispatchClass::Normal, Pays::No))]
 		pub fn my_first_claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 
