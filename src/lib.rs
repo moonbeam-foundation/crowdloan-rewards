@@ -70,7 +70,6 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
-	use frame_support::weights::PostDispatchInfo;
 	use frame_support::{
 		dispatch::fmt::Debug,
 		pallet_prelude::*,
@@ -133,7 +132,6 @@ pub mod pallet {
 	pub struct RewardInfo<T: Config> {
 		pub total_reward: BalanceOf<T>,
 		pub claimed_reward: BalanceOf<T>,
-		pub free_claim_done: bool,
 	}
 
 	// This hook is in charge of initializing the relay chain height at the first block of the parachain
@@ -142,7 +140,7 @@ pub mod pallet {
 		fn on_finalize(n: T::BlockNumber) {
 			// In the first block of the parachain we need to introduce the relay block related info
 			if n == 1u32.into() {
-				let slot = cumulus_pallet_parachain_system::Module::<T>::validation_data()
+				let slot = cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
 					.expect("validation data was set in parachain system inherent")
 					.relay_parent_number;
 				<InitRelayBlock<T>>::put(slot);
@@ -249,7 +247,7 @@ pub mod pallet {
 
 			// Vesting is done in relation with the relay chain slot
 			let now: T::BlockNumber =
-				cumulus_pallet_parachain_system::Module::<T>::validation_data()
+				cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
 					.expect("validation data was set in parachain system inherent")
 					.relay_parent_number
 					.into();
@@ -286,17 +284,6 @@ pub mod pallet {
 				should_have_claimed + first_paid - info.claimed_reward
 			};
 
-			// If first payment does not pay fees
-			let result: PostDispatchInfo = if !info.free_claim_done {
-				info.free_claim_done = true;
-				PostDispatchInfo {
-					actual_weight: Some(0),
-					pays_fee: Pays::No,
-				}
-			} else {
-				Default::default()
-			};
-
 			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
 			AccountsPayable::<T>::insert(&payee, &info);
 
@@ -310,7 +297,7 @@ pub mod pallet {
 			)?;
 			// Emit event
 			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
-			Ok(result)
+			Ok(Default::default())
 		}
 		/// Update reward address. To determine whether its something we want to keep
 		#[pallet::weight(0)]
@@ -443,7 +430,6 @@ pub mod pallet {
 				let reward_info = RewardInfo {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
-					free_claim_done: false,
 				};
 
 				if let Some(native_account) = native_account {
