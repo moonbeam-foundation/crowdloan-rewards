@@ -17,6 +17,7 @@
 //! Unit testing
 use crate::*;
 use frame_support::dispatch::{DispatchError, Dispatchable};
+use frame_support::weights::Pays;
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
@@ -625,7 +626,10 @@ fn first_free_claim_should_work() {
 		// Block relay number is 2 post init initialization
 		roll_to(4);
 
-		assert_ok!(Crowdloan::my_first_claim(Origin::signed(2)));
+		// First one is free
+		let post_info = Crowdloan::show_me_the_money(Origin::signed(2)).unwrap();
+
+		assert_eq!(post_info.pays_fee, Pays::No);
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&2).unwrap().claimed_reward,
@@ -633,12 +637,10 @@ fn first_free_claim_should_work() {
 		);
 
 		// Block relay number is 2 post init initialization
-		roll_to(6);
+		roll_to(4);
 
-		// I cannot do this claim anymore
-		assert_noop!(
-			Crowdloan::my_first_claim(Origin::signed(2)),
-			Error::<Test>::FirstClaimAlreadyDone
-		);
+		// Second one is not
+		let post_info = Crowdloan::show_me_the_money(Origin::signed(2)).unwrap();
+		assert_eq!(post_info.pays_fee, Pays::Yes);
 	});
 }
