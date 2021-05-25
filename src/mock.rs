@@ -64,10 +64,11 @@ impl cumulus_pallet_parachain_system::Config for Test {
 	type SelfParaId = ParachainId;
 	type Event = Event;
 	type OnValidationData = ();
-	type DownwardMessageHandlers = ();
 	type OutboundXcmpMessageSource = ();
 	type XcmpMessageHandler = ();
 	type ReservedXcmpWeight = ();
+	type DmpMessageHandler = ();
+	type ReservedDmpWeight = ();
 }
 
 parameter_types! {
