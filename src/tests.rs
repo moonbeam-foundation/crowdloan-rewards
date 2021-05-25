@@ -118,11 +118,12 @@ fn proving_assignation_works() {
 		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_some());
 
-		let expected = vec![crate::Event::NativeIdentityAssociated(
-			pairs[0].public().into(),
-			3,
-			500,
-		)];
+		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::InitialPaymentMade(3, 100),
+			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
+		];
 		assert_eq!(events(), expected);
 	});
 }
@@ -148,26 +149,26 @@ fn paying_works_step_by_step() {
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(4);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 125);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 200);
 		assert_noop!(
 			Crowdloan::show_me_the_money(Origin::signed(3)),
 			Error::<Test>::NoAssociatedClaim
 		);
 		roll_to(5);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 187);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
 		roll_to(6);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 300);
 		roll_to(7);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 312);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 350);
 		roll_to(8);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 375);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 400);
 		roll_to(9);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 437);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 450);
 		roll_to(10);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
@@ -178,13 +179,15 @@ fn paying_works_step_by_step() {
 		);
 
 		let expected = vec![
-			crate::Event::RewardsPaid(1, 125),
-			crate::Event::RewardsPaid(1, 62),
-			crate::Event::RewardsPaid(1, 63),
-			crate::Event::RewardsPaid(1, 62),
-			crate::Event::RewardsPaid(1, 63),
-			crate::Event::RewardsPaid(1, 62),
-			crate::Event::RewardsPaid(1, 63),
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::RewardsPaid(1, 100),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 50),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -211,20 +214,20 @@ fn paying_works_after_unclaimed_period() {
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(4);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 125);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 200);
 		assert_noop!(
 			Crowdloan::show_me_the_money(Origin::signed(3)),
 			Error::<Test>::NoAssociatedClaim
 		);
 		roll_to(5);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 187);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
 		roll_to(6);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 300);
 		roll_to(7);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 312);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 350);
 		roll_to(230);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
@@ -235,11 +238,13 @@ fn paying_works_after_unclaimed_period() {
 		);
 
 		let expected = vec![
-			crate::Event::RewardsPaid(1, 125),
-			crate::Event::RewardsPaid(1, 62),
-			crate::Event::RewardsPaid(1, 63),
-			crate::Event::RewardsPaid(1, 62),
-			crate::Event::RewardsPaid(1, 188),
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::RewardsPaid(1, 100),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 50),
+			crate::Event::RewardsPaid(1, 150),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -274,8 +279,11 @@ fn paying_late_joiner_works() {
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
 		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().claimed_reward, 500);
 		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::InitialPaymentMade(3, 100),
 			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
-			crate::Event::RewardsPaid(3, 500),
+			crate::Event::RewardsPaid(3, 400),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -306,15 +314,17 @@ fn update_address_works() {
 			Error::<Test>::NoAssociatedClaim
 		);
 		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 8));
-		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 125);
+		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 200);
 		roll_to(6);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(8)));
-		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 250);
+		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 300);
 		// The initial payment is not
 		let expected = vec![
-			crate::Event::RewardsPaid(1, 125),
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::RewardsPaid(1, 100),
 			crate::Event::RewardAddressUpdated(1, 8),
-			crate::Event::RewardsPaid(8, 125),
+			crate::Event::RewardsPaid(8, 100),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -342,19 +352,21 @@ fn update_address_with_existing_address_works() {
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(2)));
 		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
-		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 250);
+		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
 		assert_noop!(
 			Crowdloan::show_me_the_money(Origin::signed(1)),
 			Error::<Test>::NoAssociatedClaim
 		);
 		roll_to(6);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(2)));
-		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 500);
+		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 600);
 		let expected = vec![
-			crate::Event::RewardsPaid(1, 125),
-			crate::Event::RewardsPaid(2, 125),
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(2, 100),
+			crate::Event::RewardsPaid(1, 100),
+			crate::Event::RewardsPaid(2, 100),
 			crate::Event::RewardAddressUpdated(1, 2),
-			crate::Event::RewardsPaid(2, 250),
+			crate::Event::RewardsPaid(2, 200),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -441,18 +453,18 @@ fn floating_point_arithmetic_works() {
 		roll_to(2);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(1), 1200)],
+				vec![([4u8; 32].into(), Some(1), 1190)],
 				0,
 				3
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(2), 1200)],
+				vec![([5u8; 32].into(), Some(2), 1185)],
 				1,
 				3
 			)),
 			// We will work with this. This has 100/8=12.5 payable per block
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([3u8; 32].into(), Some(3), 100)],
+				vec![([3u8; 32].into(), Some(3), 125)],
 				2,
 				3
 			))
@@ -461,18 +473,19 @@ fn floating_point_arithmetic_works() {
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			0u128
+			25u128
 		);
 
 		// Block relay number is 2 post init initialization
 		// In this case there is no problem. Here we pay 12.5*2=25
+		// Total claimed reward: 25+25 = 50
 		roll_to(4);
 
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			25u128
+			50u128
 		);
 		roll_to(5);
 		// If we claim now we have to pay 12.5. 12 will be paid.
@@ -480,18 +493,21 @@ fn floating_point_arithmetic_works() {
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			37u128
+			62u128
 		);
 		roll_to(6);
 		// Now we should pay 12.5. However the calculus will be:
-		// Account 3 should have claimed 50 at this block, but
-		// he only claimed 37. The payment is 13
+		// Account 3 should have claimed 50 + 25 at this block, but
+		// he only claimed 62. The payment is 13
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			50u128
+			75u128
 		);
 		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 238),
+			crate::Event::InitialPaymentMade(2, 237),
+			crate::Event::InitialPaymentMade(3, 25),
 			crate::Event::RewardsPaid(3, 25),
 			crate::Event::RewardsPaid(3, 12),
 			crate::Event::RewardsPaid(3, 13),
@@ -511,13 +527,13 @@ fn reward_below_vesting_period_works() {
 				3
 			)),
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(2), 1248)],
+				vec![([5u8; 32].into(), Some(2), 1247)],
 				1,
 				3
 			)),
 			// We will work with this. This has 5/8=0.625 payable per block
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([3u8; 32].into(), Some(3), 5)],
+				vec![([3u8; 32].into(), Some(3), 6)],
 				2,
 				3
 			))
@@ -526,18 +542,19 @@ fn reward_below_vesting_period_works() {
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			0u128
+			1u128
 		);
 
 		// Block relay number is 2 post init initialization
 		// Here we should pay floor(0.625*2)=1
+		// Total claimed reward: 1+1 = 2
 		roll_to(4);
 
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			1u128
+			2u128
 		);
 		roll_to(5);
 		// If we claim now we have to pay floor(0.625) = 0
@@ -545,22 +562,22 @@ fn reward_below_vesting_period_works() {
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			1u128
+			2u128
 		);
 		roll_to(6);
-		// Now we should pay 1 again. The claimer should have claimed floor(0.625*4)
-		// but he only claimed 1
+		// Now we should pay 1 again. The claimer should have claimed floor(0.625*4) + 1
+		// but he only claimed 2
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			2u128
+			3u128
 		);
 		roll_to(10);
 		// We pay the remaining
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
-			5u128
+			6u128
 		);
 		roll_to(11);
 		// Nothing more to claim
@@ -570,6 +587,9 @@ fn reward_below_vesting_period_works() {
 		);
 
 		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 249),
+			crate::Event::InitialPaymentMade(2, 249),
+			crate::Event::InitialPaymentMade(3, 1),
 			crate::Event::RewardsPaid(3, 1),
 			crate::Event::RewardsPaid(3, 0),
 			crate::Event::RewardsPaid(3, 1),
@@ -599,7 +619,7 @@ fn first_free_claim_should_work() {
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&2).unwrap().claimed_reward,
-			0u128
+			250u128
 		);
 
 		// Block relay number is 2 post init initialization
@@ -609,7 +629,7 @@ fn first_free_claim_should_work() {
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&2).unwrap().claimed_reward,
-			312u128
+			500u128
 		);
 
 		// Block relay number is 2 post init initialization

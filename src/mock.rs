@@ -33,6 +33,7 @@ use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	Perbill,
 };
 use sp_std::convert::{From, TryInto};
 
@@ -120,11 +121,13 @@ parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
 	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
+	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
 
 impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
+	type InitializationPayment = TestInitializationPayment;
 	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
