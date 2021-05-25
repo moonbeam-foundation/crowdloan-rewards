@@ -79,7 +79,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
-	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
+	use sp_runtime::{MultiSignature, SaturatedConversion};
 	use sp_std::{convert::TryInto, vec::Vec};
 
 	/// The Author Filter pallet
@@ -97,9 +97,6 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
-		/// Percentage to be payed at initialization
-		#[pallet::constant]
-		type InitializationPayment: Get<Perbill>;
 		/// The minimum contribution to which rewards will be paid.
 		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
@@ -192,22 +189,7 @@ pub mod pallet {
 			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
 				.ok_or(Error::<T>::NoAssociatedClaim)?;
 
-			// Make the first payment
-			let first_payment = T::InitializationPayment::get() * reward_info.total_reward;
-
-			T::RewardCurrency::transfer(
-				&PALLET_ID.into_account(),
-				&reward_account,
-				first_payment,
-				AllowDeath,
-			)?;
-
-			Self::deposit_event(Event::InitialPaymentMade(
-				reward_account.clone(),
-				first_payment,
-			));
-
-			reward_info.claimed_reward = first_payment;
+			reward_info.claimed_reward = 0u32.into();
 
 			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
@@ -381,28 +363,10 @@ pub mod pallet {
 					continue;
 				}
 
-				// If we have a native_account, we make the payment
-				let initial_payment = if let Some(native_account) = native_account {
-					let first_payment = T::InitializationPayment::get() * (*reward);
-					T::RewardCurrency::transfer(
-						&PALLET_ID.into_account(),
-						&native_account,
-						first_payment,
-						AllowDeath,
-					)?;
-					Self::deposit_event(Event::InitialPaymentMade(
-						native_account.clone(),
-						first_payment,
-					));
-					first_payment
-				} else {
-					0u32.into()
-				};
-
 				// We need to calculate the vesting based on the relay block number
 				let reward_info = RewardInfo {
 					total_reward: *reward,
-					claimed_reward: initial_payment,
+					claimed_reward: 0u32.into(),
 					free_claim_done: false,
 				};
 
@@ -444,9 +408,6 @@ pub mod pallet {
 					.relay_parent_number
 					.into();
 
-			// Substract the first payment from the vested amount
-			let first_paid = T::InitializationPayment::get() * info.total_reward;
-
 			// Vesting perdiods as balance
 			let vesting_period = T::VestingPeriod::get()
 				.saturated_into::<u128>()
@@ -465,15 +426,14 @@ pub mod pallet {
 
 			// How much should the contributor have already claimed by this block?
 			// By multiplying first we allow the conversion to integer done with the biggest number
-			let should_have_claimed = pay_period_as_balance
-				.saturating_mul(info.total_reward - first_paid)
-				/ vesting_period;
+			let should_have_claimed =
+				pay_period_as_balance.saturating_mul(info.total_reward) / vesting_period;
 
 			// If the period is bigger than whats missing to pay, then return whats missing to pay
 			let payable_amount = if should_have_claimed >= info.total_reward {
 				info.total_reward.saturating_sub(info.claimed_reward)
 			} else {
-				should_have_claimed + first_paid - info.claimed_reward
+				should_have_claimed - info.claimed_reward
 			};
 
 			if is_first_payment {
@@ -577,8 +537,6 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The initial payment of InitializationPayment % was paid
-		InitialPaymentMade(T::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
 		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),
