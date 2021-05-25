@@ -473,8 +473,6 @@ pub mod pallet {
 		RewardVecNotFullyInitializedYet,
 		/// Reward vec has already been initialized
 		RewardsDoNotMatchFund,
-		/// Invalid conversion while calculating payable amount
-		WrongConversionU128ToBalance,
 	}
 
 	#[pallet::genesis_config]
