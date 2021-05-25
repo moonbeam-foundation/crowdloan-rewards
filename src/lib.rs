@@ -278,7 +278,7 @@ pub mod pallet {
 				/ vesting_period;
 
 			// If the period is bigger than whats missing to pay, then return whats missing to pay
-			let payable_amount = if should_have_claimed >= info.total_reward {
+			let payable_amount = if should_have_claimed >= (info.total_reward - first_paid) {
 				info.total_reward.saturating_sub(info.claimed_reward)
 			} else {
 				should_have_claimed + first_paid - info.claimed_reward

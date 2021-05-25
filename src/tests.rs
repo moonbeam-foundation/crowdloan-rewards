@@ -228,7 +228,7 @@ fn paying_works_after_unclaimed_period() {
 		roll_to(7);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 350);
-		roll_to(230);
+		roll_to(11);
 		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
 		roll_to(330);
