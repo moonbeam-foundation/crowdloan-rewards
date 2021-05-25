@@ -118,7 +118,7 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const TestVestingPeriod: u64 = 8;
+	pub const TestVestingPeriod: u32 = 8;
 	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);

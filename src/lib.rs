@@ -70,6 +70,7 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
+	use cumulus_primitives_core::relay_chain;
 	use frame_support::{
 		dispatch::fmt::Debug,
 		pallet_prelude::*,
@@ -79,8 +80,8 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
-	use sp_runtime::{MultiSignature, Perbill, SaturatedConversion};
-	use sp_std::{convert::TryInto, vec::Vec};
+	use sp_runtime::{MultiSignature, Perbill};
+	use sp_std::vec::Vec;
 
 	/// The Author Filter pallet
 	#[pallet::pallet]
@@ -118,7 +119,7 @@ pub mod pallet {
 		/// The total vesting period. Ideally this should be less than the lease period to ensure
 		/// there is no overlap between contributors from two different auctions
 		#[pallet::constant]
-		type VestingPeriod: Get<Self::BlockNumber>;
+		type VestingPeriod: Get<relay_chain::BlockNumber>;
 	}
 
 	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
@@ -246,36 +247,21 @@ pub mod pallet {
 			);
 
 			// Vesting is done in relation with the relay chain slot
-			let now: T::BlockNumber =
-				cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
-					.expect("validation data was set in parachain system inherent")
-					.relay_parent_number
-					.into();
+			let now = cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
+				.expect("validation data was set in parachain system inherent")
+				.relay_parent_number;
 
 			// Substract the first payment from the vested amount
 			let first_paid = T::InitializationPayment::get() * info.total_reward;
 
-			// Vesting perdiods as balance
-			let vesting_period = T::VestingPeriod::get()
-				.saturated_into::<u128>()
-				.try_into()
-				.ok()
-				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
-
 			// To calculate how much could the user have claimed already
-			let payable_period = now.saturating_sub(<InitRelayBlock<T>>::get().into());
-
-			let pay_period_as_balance: BalanceOf<T> = payable_period
-				.saturated_into::<u128>()
-				.try_into()
-				.ok()
-				.ok_or(Error::<T>::WrongConversionU128ToBalance)?;
+			let payable_period = now.saturating_sub(<InitRelayBlock<T>>::get());
 
 			// How much should the contributor have already claimed by this block?
 			// By multiplying first we allow the conversion to integer done with the biggest number
-			let should_have_claimed = pay_period_as_balance
-				.saturating_mul(info.total_reward - first_paid)
-				/ vesting_period;
+			let should_have_claimed = (info.total_reward - first_paid)
+				.saturating_mul(payable_period.into())
+				/ T::VestingPeriod::get().into();
 
 			// If the period is bigger than whats missing to pay, then return whats missing to pay
 			let payable_amount = if should_have_claimed >= (info.total_reward - first_paid) {
@@ -533,7 +519,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn init_relay_block)]
 	/// Relay block height at the initialization of the pallet
-	type InitRelayBlock<T: Config> = StorageValue<_, u32, ValueQuery>;
+	type InitRelayBlock<T: Config> = StorageValue<_, relay_chain::BlockNumber, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
