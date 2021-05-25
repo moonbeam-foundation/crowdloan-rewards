@@ -13,10 +13,9 @@ use frame_support::inherent::ProvideInherent;
 use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
-use parity_scale_codec::Encode;
 use sp_core::crypto::AccountId32;
 use sp_core::ed25519;
-use sp_core::{Pair, H256};
+use sp_core::H256;
 use sp_runtime::traits::One;
 use sp_runtime::MultiSignature;
 use sp_std::convert::TryInto;
@@ -108,19 +107,20 @@ fn create_contributors<T: Config>(
 	Ok(())
 }
 
-fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
-	let seed: u128 = 12345678901234567890123456789012;
-	let mut pairs = Vec::new();
-	for i in 0..num {
-		pairs.push(ed25519::Pair::from_seed(
-			(seed.clone() + i as u128)
-				.to_string()
-				.as_bytes()
-				.try_into()
-				.unwrap(),
-		))
-	}
-	pairs
+fn crate_fake_sig() -> (AccountId32, MultiSignature) {
+	let account: AccountId32 = [
+		47, 140, 97, 41, 216, 22, 207, 81, 195, 116, 188, 127, 8, 195, 230, 62, 209, 86, 207, 120,
+		174, 251, 74, 101, 80, 217, 123, 135, 153, 121, 119, 238,
+	]
+	.into();
+	let sig_vec: &[u8] = &[
+		42, 156, 216, 137, 118, 116, 191, 63, 174, 94, 17, 86, 26, 76, 198, 138, 172, 15, 159, 177,
+		102, 229, 198, 129, 228, 189, 31, 196, 114, 205, 152, 125, 108, 26, 200, 65, 104, 42, 226,
+		150, 223, 197, 42, 99, 196, 255, 176, 208, 197, 81, 160, 119, 66, 97, 178, 125, 57, 12, 2,
+		106, 59, 5, 101, 13,
+	];
+	let signature: ed25519::Signature = sig_vec.try_into().unwrap();
+	(account, signature.into())
 }
 
 const MAX_USERS: u32 = 100;
@@ -270,10 +270,9 @@ benchmarks! {
 				whitelist_account!(user);
 			}
 		}
-		let pairs = get_ed25519_pairs(1);
+		let (relay_account, signature) = crate_fake_sig();
+
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
-		let signature: MultiSignature = pairs[0].sign(&caller.encode()).into();
-		let relay_account: AccountId32 = pairs[0].public().into();
 		contribution_vec.push((relay_account.clone().into(), None, 100u32.into()));
 
 		create_contributors::<T>(contribution_vec)?;
