@@ -20,11 +20,10 @@ use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use frame_support::inherent::InherentData;
 use frame_support::{
 	construct_runtime,
 	dispatch::UnfilteredDispatchable,
-	inherent::ProvideInherent,
+	inherent::{InherentData, ProvideInherent},
 	parameter_types,
 	traits::{GenesisBuild, OnFinalize, OnInitialize},
 };
@@ -38,7 +37,6 @@ use sp_runtime::{
 };
 use sp_std::convert::{From, TryInto};
 
-pub type AccountId = u64;
 pub type Balance = u128;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -66,10 +64,11 @@ impl cumulus_pallet_parachain_system::Config for Test {
 	type SelfParaId = ParachainId;
 	type Event = Event;
 	type OnValidationData = ();
-	type DownwardMessageHandlers = ();
 	type OutboundXcmpMessageSource = ();
 	type XcmpMessageHandler = ();
 	type ReservedXcmpWeight = ();
+	type DmpMessageHandler = ();
+	type ReservedDmpWeight = ();
 }
 
 parameter_types! {
@@ -120,18 +119,16 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const TestVestingPeriod: u64 = 8;
-	pub const TestMinimumContribution: u128 = 0;
-	pub const TestDefaultBlocksPerRound: u32 = 500;
+	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 }
 
 impl Config for Test {
 	type Event = Event;
-	type DefaultBlocksPerRound = TestDefaultBlocksPerRound;
-	type MinimumContribution = TestMinimumContribution;
 	type Initialized = TestInitialized;
 	type InitializationPayment = TestInitializationPayment;
+	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
@@ -143,33 +140,16 @@ impl pallet_utility::Config for Test {
 	type WeightInfo = ();
 }
 
-fn genesis(contributions: Vec<([u8; 32], Option<AccountId>, u32)>) -> sp_io::TestExternalities {
+fn genesis(funded_amount: Balance) -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
-	pallet_crowdloan_rewards::GenesisConfig::<Test> {
-		associated: vec![],
-		unassociated: vec![],
-		reward_ratio: 0,
-		funded_amount: 100000u32.into(),
-	}
-	.assimilate_storage(&mut storage)
-	.expect("Pallet balances storage can be assimilated");
+	pallet_crowdloan_rewards::GenesisConfig::<Test> { funded_amount }
+		.assimilate_storage(&mut storage)
+		.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::from(storage);
-	ext.execute_with(|| {
-		if contributions.len() > 0 {
-			Crowdloan::initialize_reward_vec(
-				Origin::root(),
-				contributions.clone(),
-				1,
-				0,
-				contributions.len() as u32,
-			)
-			.unwrap();
-		}
-		System::set_block_number(1)
-	});
+	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
 
@@ -191,7 +171,7 @@ pub(crate) fn get_ed25519_pairs(num: u32) -> Vec<ed25519::Pair> {
 }
 
 pub(crate) fn empty() -> sp_io::TestExternalities {
-	genesis(vec![])
+	genesis(2500u32.into())
 }
 
 pub(crate) fn events() -> Vec<super::Event<Test>> {
