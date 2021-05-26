@@ -333,6 +333,12 @@ mod tests {
 			assert_ok!(test_benchmark_update_reward_address::<Test>());
 		});
 	}
+	#[test]
+	fn associate_native_identity() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_associate_native_identity::<Test>());
+		});
+	}
 }
 
 impl_benchmark_test_suite!(
