@@ -13,7 +13,7 @@ use frame_support::inherent::ProvideInherent;
 use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
-use sp_core::crypto::AccountId32;
+use sp_core::crypto::{AccountId32, KeyTypeId};
 use sp_core::{H256, ed25519};
 use sp_runtime::traits::One;
 use sp_runtime::MultiSignature;
@@ -21,9 +21,8 @@ use sp_std::convert::TryInto;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
-use sp_keyring::{Ed25519Keyring};
 use parity_scale_codec::Encode;
-
+use sp_application_crypto::{ed25519::Pair, Pair as TraitPair};
 /// Default balance amount is minimum contributisueon
 fn default_balance<T: Config>() -> BalanceOf<T> {
 	<<T as Config>::MinimumReward as Get<BalanceOf<T>>>::get()
@@ -258,9 +257,11 @@ benchmarks! {
 		}
 
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
-	    let relay_account: AccountId32 = Ed25519Keyring::Alice.public().into();
+
+		let pair = Pair::from_seed(b"12345678901234567890123456789012");
+	    let relay_account: AccountId32 = pair.public().into();
 	    let payload = caller.encode();
-		let signature = Ed25519Keyring::Alice.sign(payload.as_slice());
+		let signature = pair.sign(&payload);
 		contribution_vec.push((relay_account.clone().into(), None, 100u32.into()));
 
 		create_contributors::<T>(contribution_vec)?;
