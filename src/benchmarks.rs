@@ -97,12 +97,14 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 /// Create a Contributor.
 fn create_contributors<T: Config>(
 	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
+	index: u32,
+	limit: u32
 ) -> Result<(), &'static str> {
 	Pallet::<T>::initialize_reward_vec(
 		RawOrigin::Root.into(),
 		contributors.clone(),
-		0,
-		contributors.len() as u32,
+		index,
+		limit,
 	)?;
 	Ok(())
 }
@@ -123,19 +125,21 @@ fn crate_fake_sig() -> (AccountId32, MultiSignature) {
 	(account, signature.into())
 }
 
-const MAX_USERS: u32 = 97;
-
+const MAX_ALREADY_USERS: u32 = 5000;
+const MAX_USERS: u32 = 500;
+const SEED:u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
-		let x in 3..MAX_USERS;
+		let x in 1..MAX_USERS;
+		let y in 1..MAX_ALREADY_USERS;
 
-		let total_pot = 100u32*(x-2);
-
+		let total_pot = 100u32*(x+y);
+		// Whats the worst case? the worst case is in which we have already N contributors
 		// Fund pallet account
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 		let mut contribution_vec = Vec::new();
-		for i in 2..x{
-			let seed = MAX_USERS - i;
+		for i in 0..y{
+			let seed = SEED - i;
 			let mut account: [u8; 32] = [0u8; 32];
 			let seed_as_slice = seed.to_be_bytes();
 			for j in 0..seed_as_slice.len() {
@@ -149,11 +153,28 @@ benchmarks! {
 				whitelist_account!(user);
 			}
 		}
-		assert_eq!(Pallet::<T>::pot(), (100u32*(x-2)).into());
+		create_contributors::<T>(contribution_vec, 0, x+y)?;
 
-		let verifier = create_funded_user::<T>("user", MAX_USERS-2, 0u32.into());
+		let mut contribution_vec = Vec::new();
+		for i in 0..x{
+			let seed = SEED - i -y;
+			let mut account: [u8; 32] = [0u8; 32];
+			let seed_as_slice = seed.to_be_bytes();
+			for j in 0..seed_as_slice.len() {
+				account[j] = seed_as_slice[j]
+			}
+			let relay_chain_account: AccountId32 = account.into();
+			let user = create_funded_user::<T>("user", seed, 0u32.into());
+			let contribution: BalanceOf<T> = 100u32.into();
+			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
+			if i!=0 {
+				whitelist_account!(user);
+			}
+		}
 
-	}:  _(RawOrigin::Root, contribution_vec, 0, x-2)
+		let verifier = create_funded_user::<T>("user", SEED, 0u32.into());
+
+	}:  _(RawOrigin::Root, contribution_vec, y, x+y)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&verifier).is_some());
 		assert!(Pallet::<T>::initialized());
