@@ -14,16 +14,17 @@ use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
 use sp_core::crypto::AccountId32;
-use sp_core::ed25519;
-use sp_core::H256;
+use sp_core::{H256, ed25519};
 use sp_runtime::traits::One;
 use sp_runtime::MultiSignature;
 use sp_std::convert::TryInto;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
+use sp_keyring::{Ed25519Keyring};
+use parity_scale_codec::Encode;
 
-/// Default balance amount is minimum contribution
+/// Default balance amount is minimum contributisueon
 fn default_balance<T: Config>() -> BalanceOf<T> {
 	<<T as Config>::MinimumReward as Get<BalanceOf<T>>>::get()
 }
@@ -105,22 +106,6 @@ fn create_contributors<T: Config>(
 		contributors.len() as u32,
 	)?;
 	Ok(())
-}
-
-fn crate_fake_sig() -> (AccountId32, MultiSignature) {
-	let account: AccountId32 = [
-		47, 140, 97, 41, 216, 22, 207, 81, 195, 116, 188, 127, 8, 195, 230, 62, 209, 86, 207, 120,
-		174, 251, 74, 101, 80, 217, 123, 135, 153, 121, 119, 238,
-	]
-	.into();
-	let sig_vec: &[u8] = &[
-		42, 156, 216, 137, 118, 116, 191, 63, 174, 94, 17, 86, 26, 76, 198, 138, 172, 15, 159, 177,
-		102, 229, 198, 129, 228, 189, 31, 196, 114, 205, 152, 125, 108, 26, 200, 65, 104, 42, 226,
-		150, 223, 197, 42, 99, 196, 255, 176, 208, 197, 81, 160, 119, 66, 97, 178, 125, 57, 12, 2,
-		106, 59, 5, 101, 13,
-	];
-	let signature: ed25519::Signature = sig_vec.try_into().unwrap();
-	(account, signature.into())
 }
 
 const MAX_USERS: u32 = 100;
@@ -250,6 +235,7 @@ benchmarks! {
 	}
 
 		associate_native_identity {
+
 		let x in 2..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -270,9 +256,11 @@ benchmarks! {
 				whitelist_account!(user);
 			}
 		}
-		let (relay_account, signature) = crate_fake_sig();
 
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
+	    let relay_account: AccountId32 = Ed25519Keyring::Alice.public().into();
+	    let payload = caller.encode();
+		let signature = Ed25519Keyring::Alice.sign(payload.as_slice());
 		contribution_vec.push((relay_account.clone().into(), None, 100u32.into()));
 
 		create_contributors::<T>(contribution_vec)?;
@@ -295,7 +283,7 @@ benchmarks! {
 
 		RelayPallet::<T>::on_finalize(10u32.into());
 		let new_user = create_funded_user::<T>("user", MAX_USERS+1, 0u32.into());
-	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
+	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature.into())
 	verify {
 		assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().total_reward, (100u32.into()));
 	}
