@@ -147,7 +147,7 @@ benchmarks! {
 				whitelist_account!(user);
 			}
 		}
-		let verifier = create_funded_user::<T>("user", MAX_USERS, 0u32.into());
+		let verifier = create_funded_user::<T>("user", MAX_USERS+1, 0u32.into());
 
 	}:  _(RawOrigin::Root, contribution_vec, 0, x)
 	verify {
@@ -176,7 +176,7 @@ benchmarks! {
 			}
 		}
 		create_contributors::<T>(contribution_vec)?;
-		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
+		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS+1, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
@@ -223,7 +223,7 @@ benchmarks! {
 			}
 		}
 		create_contributors::<T>(contribution_vec)?;
-		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
+		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS+1, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
