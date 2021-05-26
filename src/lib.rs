@@ -404,7 +404,7 @@ pub mod pallet {
 			PALLET_ID.into_account()
 		}
 		/// The Account Id's balance
-		fn pot() -> BalanceOf<T> {
+		pub fn pot() -> BalanceOf<T> {
 			T::RewardCurrency::free_balance(&Self::account_id())
 		}
 		/// Make a vested payment

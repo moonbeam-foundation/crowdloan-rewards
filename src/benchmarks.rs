@@ -123,7 +123,7 @@ fn crate_fake_sig() -> (AccountId32, MultiSignature) {
 	(account, signature.into())
 }
 
-const MAX_USERS: u32 = 100;
+const MAX_USERS: u32 = 97;
 
 benchmarks! {
 	initialize_reward_vec {
@@ -149,6 +149,8 @@ benchmarks! {
 				whitelist_account!(user);
 			}
 		}
+		assert_eq!(Pallet::<T>::pot(), (100u32*(x-2)).into());
+
 		let verifier = create_funded_user::<T>("user", MAX_USERS-2, 0u32.into());
 
 	}:  _(RawOrigin::Root, contribution_vec, 0, x-2)
