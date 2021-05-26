@@ -126,7 +126,7 @@ fn crate_fake_sig() -> (AccountId32, MultiSignature) {
 const MAX_USERS: u32 = 100;
 
 benchmarks! {
-	initialize_reward_vec {
+	/*initialize_reward_vec {
 		let x in 2..MAX_USERS;
 		let total_pot = 100u32*x;
 		// Fund pallet account
@@ -152,7 +152,7 @@ benchmarks! {
 	}:  _(RawOrigin::Root, contribution_vec, 0, x)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&verifier).is_some());
-	}
+	}*/
 
 	show_me_the_money {
 		let x in 2..MAX_USERS;
@@ -315,12 +315,12 @@ mod tests {
 		TestExternalities::new(t)
 	}
 
-	#[test]
+	/*#[test]
 	fn bench_init_reward_vec() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_initialize_reward_vec::<Test>());
 		});
-	}
+	}*/
 	#[test]
 	fn bench_show_me_the_money() {
 		new_test_ext().execute_with(|| {
