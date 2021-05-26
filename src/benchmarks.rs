@@ -126,13 +126,13 @@ fn crate_fake_sig() -> (AccountId32, MultiSignature) {
 const MAX_USERS: u32 = 100;
 
 benchmarks! {
-	/*initialize_reward_vec {
-		let x in 2..MAX_USERS;
+	initialize_reward_vec {
+		let x in 3..MAX_USERS;
 		let total_pot = 100u32*x;
 		// Fund pallet account
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 		let mut contribution_vec = Vec::new();
-		for i in 0..x{
+		for i in 2..x{
 			let seed = MAX_USERS - i;
 			let mut account: [u8; 32] = [0u8; 32];
 			let seed_as_slice = seed.to_be_bytes();
@@ -152,15 +152,15 @@ benchmarks! {
 	}:  _(RawOrigin::Root, contribution_vec, 0, x)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&verifier).is_some());
-	}*/
+	}
 
 	show_me_the_money {
-		let x in 2..MAX_USERS;
+		let x in 3..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 		let mut contribution_vec = Vec::new();
-		for i in 0..x{
+		for i in 2..x{
 			let seed = MAX_USERS - i;
 			let mut account: [u8; 32] = [0u8; 32];
 			let seed_as_slice = seed.to_be_bytes();
@@ -176,7 +176,7 @@ benchmarks! {
 			}
 		}
 		create_contributors::<T>(contribution_vec)?;
-		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 0u32.into());
+		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
@@ -202,12 +202,12 @@ benchmarks! {
 	}
 
 	update_reward_address {
-		let x in 2..MAX_USERS;
+		let x in 3..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 		let mut contribution_vec = Vec::new();
-		for i in 0..x{
+		for i in 2..x{
 			let seed = MAX_USERS - i;
 			let mut account: [u8; 32] = [0u8; 32];
 			let seed_as_slice = seed.to_be_bytes();
@@ -315,12 +315,12 @@ mod tests {
 		TestExternalities::new(t)
 	}
 
-	/*#[test]
+	#[test]
 	fn bench_init_reward_vec() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_initialize_reward_vec::<Test>());
 		});
-	}*/
+	}
 	#[test]
 	fn bench_show_me_the_money() {
 		new_test_ext().execute_with(|| {
