@@ -22,7 +22,7 @@ use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
 use parity_scale_codec::Encode;
-use sp_application_crypto::{ed25519::Pair, Pair as TraitPair};
+use sp_core::Pair;
 /// Default balance amount is minimum contributisueon
 fn default_balance<T: Config>() -> BalanceOf<T> {
 	<<T as Config>::MinimumReward as Get<BalanceOf<T>>>::get()
@@ -258,7 +258,7 @@ benchmarks! {
 
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
 
-		let pair = Pair::from_seed(b"12345678901234567890123456789012");
+		let pair = ed25519::Pair::from_seed(b"12345678901234567890123456789012");
 	    let relay_account: AccountId32 = pair.public().into();
 	    let payload = caller.encode();
 		let signature = pair.sign(&payload);
