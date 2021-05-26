@@ -249,7 +249,7 @@ benchmarks! {
 		assert_eq!(Pallet::<T>::accounts_payable(&new_user).unwrap().total_reward, (100u32.into()));
 	}
 
-		associate_native_identity {
+/*		associate_native_identity {
 		let x in 2..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -298,7 +298,7 @@ benchmarks! {
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
 	verify {
 		assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().total_reward, (100u32.into()));
-	}
+	}*/
 
 }
 #[cfg(test)]
@@ -333,12 +333,12 @@ mod tests {
 			assert_ok!(test_benchmark_update_reward_address::<Test>());
 		});
 	}
-	#[test]
+/*	#[test]
 	fn associate_native_identity() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_associate_native_identity::<Test>());
 		});
-	}
+	}*/
 }
 
 impl_benchmark_test_suite!(
