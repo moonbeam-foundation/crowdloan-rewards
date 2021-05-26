@@ -128,7 +128,9 @@ const MAX_USERS: u32 = 100;
 benchmarks! {
 	initialize_reward_vec {
 		let x in 3..MAX_USERS;
-		let total_pot = 100u32*x;
+
+		let total_pot = 100u32*(x-2);
+
 		// Fund pallet account
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 		let mut contribution_vec = Vec::new();
@@ -147,14 +149,15 @@ benchmarks! {
 				whitelist_account!(user);
 			}
 		}
-		let verifier = create_funded_user::<T>("user", MAX_USERS+1, 0u32.into());
+		let verifier = create_funded_user::<T>("user", MAX_USERS-2, 0u32.into());
 
-	}:  _(RawOrigin::Root, contribution_vec, 0, x)
+	}:  _(RawOrigin::Root, contribution_vec, 0, x-2)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&verifier).is_some());
+		assert!(Pallet::<T>::initialized());
 	}
 
-	show_me_the_money {
+/*	show_me_the_money {
 		let x in 3..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -249,7 +252,7 @@ benchmarks! {
 		assert_eq!(Pallet::<T>::accounts_payable(&new_user).unwrap().total_reward, (100u32.into()));
 	}
 
-/*		associate_native_identity {
+		associate_native_identity {
 		let x in 2..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -321,7 +324,7 @@ mod tests {
 			assert_ok!(test_benchmark_initialize_reward_vec::<Test>());
 		});
 	}
-	#[test]
+/*	#[test]
 	fn bench_show_me_the_money() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_show_me_the_money::<Test>());
@@ -333,7 +336,7 @@ mod tests {
 			assert_ok!(test_benchmark_update_reward_address::<Test>());
 		});
 	}
-/*	#[test]
+	#[test]
 	fn associate_native_identity() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_associate_native_identity::<Test>());
