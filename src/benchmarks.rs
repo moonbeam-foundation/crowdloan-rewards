@@ -125,7 +125,7 @@ fn crate_fake_sig() -> (AccountId32, MultiSignature) {
 	(account, signature.into())
 }
 
-const MAX_ALREADY_USERS: u32 = 5000;
+const MAX_ALREADY_USERS: u32 = 500;
 const MAX_USERS: u32 = 500;
 const SEED:u32 = 999999999;
 benchmarks! {
