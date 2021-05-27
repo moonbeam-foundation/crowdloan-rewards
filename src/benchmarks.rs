@@ -14,7 +14,7 @@ use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
 use sp_core::crypto::{AccountId32, UncheckedFrom};
-use sp_core::{ed25519, Pair};
+use sp_core::{ed25519};
 use sp_core::H256;
 use sp_runtime::traits::One;
 use sp_runtime::{MultiSignature, MultiSigner};
