@@ -116,8 +116,8 @@ pub mod pallet {
 			+ Debug
 			+ Into<AccountId32>;
 
-		/// The total vesting period. Ideally this should be less than the lease period to ensure
-		/// there is no overlap between contributors from two different auctions
+		/// The total vesting period. Ideally this should be less or equal
+		/// than the lease period to ensure contributors vest the tokens during the lease
 		#[pallet::constant]
 		type VestingPeriod: Get<relay_chain::BlockNumber>;
 	}
@@ -234,10 +234,7 @@ pub mod pallet {
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
-			ensure!(
-				initialized == true,
-				Error::<T>::RewardVecNotFullyInitializedYet
-			);
+			ensure!(initialized, Error::<T>::RewardVecNotFullyInitializedYet);
 			// Calculate the veted amount on demand.
 			let mut info =
 				AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
