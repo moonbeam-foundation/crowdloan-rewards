@@ -128,8 +128,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type VestingPeriod: Get<relay_chain::BlockNumber>;
 
-		/// Weight information for extrinsics in this pallet.
-		type WeightInfo: WeightInfo;
 	}
 
 	pub type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
@@ -326,7 +324,7 @@ pub mod pallet {
 		/// We only set this to "initialized" once we receive index==limit
 		/// This is expected to be executed with batch_all, that atomically initializes contributions
 		/// TODO Should we perform sanity checks here? (i.e., min contribution)
-		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32, *index))]
+		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
 			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
