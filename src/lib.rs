@@ -61,13 +61,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::pallet;
-pub use pallet::*;
+pub mod weights;
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 mod benchmarks;
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
+
+pub use weights::WeightInfo;
+pub use pallet::*;
 
 #[pallet]
 pub mod pallet {
@@ -84,6 +87,7 @@ pub mod pallet {
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec::Vec;
+	use crate::WeightInfo;
 
 	/// The Author Filter pallet
 	#[pallet::pallet]
@@ -123,6 +127,9 @@ pub mod pallet {
 		/// than the lease period to ensure contributors vest the tokens during the lease
 		#[pallet::constant]
 		type VestingPeriod: Get<relay_chain::BlockNumber>;
+
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo: WeightInfo;
 	}
 
 	pub type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
@@ -238,51 +245,47 @@ pub mod pallet {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
 			ensure!(initialized, Error::<T>::RewardVecNotFullyInitializedYet);
-			// Calculate the veted amount on demand.
-			let mut info =
-				AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;
-			ensure!(
-				info.claimed_reward < info.total_reward,
+			AccountsPayable::<T>::try_mutate(&payee, |item| -> DispatchResult {
+				let mut reward_info = item.clone().ok_or(Error::<T>::NoAssociatedClaim)?;
+				ensure!(
+				reward_info.claimed_reward < reward_info.total_reward,
 				Error::<T>::RewardsAlreadyClaimed
-			);
+				);
+				// Vesting is done in relation with the relay chain slot
+				let now = cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
+					.expect("validation data was set in parachain system inherent")
+					.relay_parent_number;
+				// Substract the first payment from the vested amount
+				let first_paid = T::InitializationPayment::get() * reward_info.total_reward;
 
-			// Vesting is done in relation with the relay chain slot
-			let now = cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
-				.expect("validation data was set in parachain system inherent")
-				.relay_parent_number;
+				// To calculate how much could the user have claimed already
+				let payable_period = now.saturating_sub(<InitRelayBlock<T>>::get());
 
-			// Substract the first payment from the vested amount
-			let first_paid = T::InitializationPayment::get() * info.total_reward;
+				// How much should the contributor have already claimed by this block?
+				// By multiplying first we allow the conversion to integer done with the biggest number
+				let should_have_claimed = (reward_info.total_reward - first_paid)
+					.saturating_mul(payable_period.into())
+					/ T::VestingPeriod::get().into();
 
-			// To calculate how much could the user have claimed already
-			let payable_period = now.saturating_sub(<InitRelayBlock<T>>::get());
+				// If the period is bigger than whats missing to pay, then return whats missing to pay
+				let payable_amount = if should_have_claimed >= (reward_info.total_reward - first_paid) {
+					reward_info.total_reward.saturating_sub(reward_info.claimed_reward)
+				} else {
+					should_have_claimed + first_paid - reward_info.claimed_reward
+				};
 
-			// How much should the contributor have already claimed by this block?
-			// By multiplying first we allow the conversion to integer done with the biggest number
-			let should_have_claimed = (info.total_reward - first_paid)
-				.saturating_mul(payable_period.into())
-				/ T::VestingPeriod::get().into();
-
-			// If the period is bigger than whats missing to pay, then return whats missing to pay
-			let payable_amount = if should_have_claimed >= (info.total_reward - first_paid) {
-				info.total_reward.saturating_sub(info.claimed_reward)
-			} else {
-				should_have_claimed + first_paid - info.claimed_reward
-			};
-
-			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
-			AccountsPayable::<T>::insert(&payee, &info);
-
-			// This pallet controls an amount of funds and transfers them to each of the contributors
-			//TODO: contributors should have the balance locked for tranfers but not for democracy
-			T::RewardCurrency::transfer(
-				&PALLET_ID.into_account(),
-				&payee,
-				payable_amount,
-				AllowDeath,
-			)?;
-			// Emit event
-			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
+				reward_info.claimed_reward = reward_info.claimed_reward.saturating_add(payable_amount);
+				T::RewardCurrency::transfer(
+					&PALLET_ID.into_account(),
+					&payee,
+					payable_amount,
+					AllowDeath,
+				)?;
+				*item = Some(reward_info);
+				// Emit event
+				Self::deposit_event(Event::RewardsPaid(payee.clone(), payable_amount));
+				Ok(())
+			})?;
 			Ok(Default::default())
 		}
 		/// Update reward address. To determine whether its something we want to keep
@@ -323,7 +326,7 @@ pub mod pallet {
 		/// We only set this to "initialized" once we receive index==limit
 		/// This is expected to be executed with batch_all, that atomically initializes contributions
 		/// TODO Should we perform sanity checks here? (i.e., min contribution)
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32, *index))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
 			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
@@ -332,6 +335,11 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let initialized = <Initialized<T>>::get();
+			ensure!(
+				initialized == false,
+				Error::<T>::RewardVecAlreadyInitialized
+			);
+
 			ensure!(
 				initialized == false,
 				Error::<T>::RewardVecAlreadyInitialized

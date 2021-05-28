@@ -132,6 +132,7 @@ impl Config for Test {
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingPeriod = TestVestingPeriod;
+	type WeightInfo = ();
 }
 
 impl pallet_utility::Config for Test {
