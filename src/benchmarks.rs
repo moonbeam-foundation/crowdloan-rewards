@@ -6,6 +6,7 @@ use cumulus_primitives_core::relay_chain::v1::HeadData;
 use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
+use ed25519_dalek::Signer;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelist_account};
 use frame_support::dispatch::UnfilteredDispatchable;
 use frame_support::inherent::InherentData;
@@ -13,18 +14,15 @@ use frame_support::inherent::ProvideInherent;
 use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_system::RawOrigin;
+use parity_scale_codec::Encode;
 use sp_core::crypto::{AccountId32, UncheckedFrom};
-use sp_core::{ed25519, Pair};
+use sp_core::ed25519;
 use sp_core::H256;
 use sp_runtime::traits::One;
-use sp_runtime::{MultiSignature, MultiSigner};
-use sp_std::convert::{TryInto, TryFrom};
+use sp_runtime::MultiSignature;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
-use sp_io::crypto::{ed25519_sign, ed25519_generate};
-use parity_scale_codec::Encode;
-use ed25519_dalek::Signer;
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -101,45 +99,31 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 fn create_contributors<T: Config>(
 	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 	index: u32,
-	limit: u32
+	limit: u32,
 ) -> Result<(), &'static str> {
-	Pallet::<T>::initialize_reward_vec(
-		RawOrigin::Root.into(),
-		contributors.clone(),
-		index,
-		limit,
-	)?;
+	Pallet::<T>::initialize_reward_vec(RawOrigin::Root.into(), contributors.clone(), index, limit)?;
 	Ok(())
 }
 
 fn crate_fake_sig<T: Config>(signed_account: T::AccountId) -> (AccountId32, MultiSignature) {
-	let seed: [u8; 32] =  [
+	let seed: [u8; 32] = [
 		47, 140, 97, 41, 216, 22, 207, 81, 195, 116, 188, 127, 8, 195, 230, 62, 209, 86, 207, 120,
 		174, 251, 74, 101, 80, 217, 123, 135, 153, 121, 119, 238,
 	];
-	let secret  = ed25519_dalek::SecretKey::from_bytes(&seed).unwrap();
+	let secret = ed25519_dalek::SecretKey::from_bytes(&seed).unwrap();
 	let public = ed25519_dalek::PublicKey::from(&secret);
-	let pair = ed25519_dalek::Keypair {secret, public};
+	let pair = ed25519_dalek::Keypair { secret, public };
 	let sig = pair.sign(&signed_account.encode()).to_bytes();
 	let signature: MultiSignature = ed25519::Signature::from_raw(sig).into();
 
-	let ed_public : ed25519::Public = ed25519::Public::unchecked_from(public.to_bytes());
+	let ed_public: ed25519::Public = ed25519::Public::unchecked_from(public.to_bytes());
 	let account: AccountId32 = ed_public.into();
 	(account, signature.into())
 }
 
-pub fn create_ed25519_signature(payload: &[u8], pubkey: MultiSigner) -> MultiSignature {
-	let edpubkey = ed25519::Public::try_from(pubkey).unwrap();
-	let edsig = ed25519_sign(0.into(), &edpubkey, payload).unwrap();
-	edsig.into()
-}
-pub fn create_ed25519_pubkey(seed: Vec<u8>) -> MultiSigner {
-	ed25519_generate(0.into(), Some(seed)).into()
-}
-
 const MAX_ALREADY_USERS: u32 = 500;
 const MAX_USERS: u32 = 500;
-const SEED:u32 = 999999999;
+const SEED: u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
 		let x in 1..MAX_USERS;
