@@ -337,17 +337,11 @@ pub mod pallet {
 				Error::<T>::RewardVecAlreadyInitialized
 			);
 
-			let claimed_rewards = AccountsPayable::<T>::iter().fold(
-				0u32.into(),
-				|acc: BalanceOf<T>, (_, reward_info)| {
-					acc + reward_info.total_reward - reward_info.claimed_reward
-				},
-			);
+			// What is the amount initialized so far?
+			let mut current_initialized_rewards = InitializedRewardAmount::<T>::get();
 
-			let unassociated_rewards = UnassociatedContributions::<T>::iter()
-				.fold(0u32.into(), |acc: BalanceOf<T>, (_, reward_info)| {
-					acc + reward_info.total_reward
-				});
+			// Total number of contributors
+			let mut total_contributors = TotalContributors::<T>::get();
 
 			let incoming_rewards: BalanceOf<T> = rewards
 				.iter()
@@ -357,14 +351,14 @@ pub mod pallet {
 
 			// Ensure we dont go over funds
 			ensure!(
-				claimed_rewards + unassociated_rewards + incoming_rewards <= Self::pot(),
+				current_initialized_rewards + incoming_rewards <= Self::pot(),
 				Error::<T>::BatchBeyondFundPot
 			);
 
 			// Let's ensure we can close initialization
 			if index + rewards.len() as u32 == limit {
 				ensure!(
-					claimed_rewards + unassociated_rewards + incoming_rewards == Self::pot(),
+					current_initialized_rewards + incoming_rewards == Self::pot(),
 					Error::<T>::RewardsDoNotMatchFund
 				);
 			}
@@ -418,6 +412,9 @@ pub mod pallet {
 					claimed_reward: initial_payment,
 				};
 
+				current_initialized_rewards += *reward - initial_payment;
+				total_contributors += 1;
+
 				if let Some(native_account) = native_account {
 					AccountsPayable::<T>::insert(native_account, reward_info);
 					ClaimedRelayChainIds::<T>::insert(relay_account, ());
@@ -425,6 +422,8 @@ pub mod pallet {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
 				}
 			}
+			InitializedRewardAmount::<T>::put(current_initialized_rewards);
+			TotalContributors::<T>::put(total_contributors);
 			// Let's ensure we can close initialization
 			if index + rewards.len() as u32 == limit {
 				<Initialized<T>>::put(true);
@@ -518,6 +517,17 @@ pub mod pallet {
 	#[pallet::getter(fn init_relay_block)]
 	/// Relay block height at the initialization of the pallet
 	type InitRelayBlock<T: Config> = StorageValue<_, relay_chain::BlockNumber, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn init_reward_amount)]
+	/// Total initialized amount so far. We store this to make pallet funds == contributors reward
+	/// check easier and more efficient
+	type InitializedRewardAmount<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn total_contributors)]
+	/// Total number of contributors to aid hinting benchmarking
+	type TotalContributors<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
