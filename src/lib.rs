@@ -337,6 +337,9 @@ pub mod pallet {
 			// What is the amount initialized so far?
 			let mut current_initialized_rewards = InitializedRewardAmount::<T>::get();
 
+			// Total number of contributors
+			let mut total_contributors = TotalContributors::<T>::get();
+
 			let incoming_rewards: BalanceOf<T> = rewards
 				.iter()
 				.fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {
@@ -407,6 +410,7 @@ pub mod pallet {
 				};
 
 				current_initialized_rewards += *reward - initial_payment;
+				total_contributors += 1;
 
 				if let Some(native_account) = native_account {
 					AccountsPayable::<T>::insert(native_account, reward_info);
@@ -416,6 +420,7 @@ pub mod pallet {
 				}
 			}
 			InitializedRewardAmount::<T>::put(current_initialized_rewards);
+			TotalContributors::<T>::put(total_contributors);
 			// Let's ensure we can close initialization
 			if index + rewards.len() as u32 == limit {
 				<Initialized<T>>::put(true);
@@ -515,6 +520,11 @@ pub mod pallet {
 	/// Total initialized amount so far. We store this to make pallet funds == contributors reward
 	/// check easier and more efficient
 	type InitializedRewardAmount<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn total_contributors)]
+	/// Total number of contributors to aid hinting benchmarking
+	type TotalContributors<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]

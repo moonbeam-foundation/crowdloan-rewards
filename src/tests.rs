@@ -41,6 +41,8 @@ fn geneses() {
 			0,
 			5
 		));
+		assert_eq!(Crowdloan::total_contributors(), 5);
+
 		// accounts_payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		assert!(Crowdloan::accounts_payable(&2).is_some());
@@ -423,6 +425,7 @@ fn initialize_new_addresses_with_batch() {
 			))
 		]))
 		.dispatch(Origin::root()));
+		assert_eq!(Crowdloan::total_contributors(), 2);
 
 		// Batch calls always succeed. We just need to check the inner event
 		assert_ok!(
@@ -470,6 +473,7 @@ fn floating_point_arithmetic_works() {
 			))
 		]))
 		.dispatch(Origin::root()));
+		assert_eq!(Crowdloan::total_contributors(), 3);
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
