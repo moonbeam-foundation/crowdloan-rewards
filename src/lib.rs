@@ -256,9 +256,15 @@ pub mod pallet {
 
 			// How much should the contributor have already claimed by this block?
 			// By multiplying first we allow the conversion to integer done with the biggest number
-			let should_have_claimed = (info.total_reward - first_paid)
-				.saturating_mul(payable_period.into())
-				/ T::VestingPeriod::get().into();
+			let period = T::VestingPeriod::get();
+			let should_have_claimed = if period == 0 {
+				// Pallet is configured with a zero vesting period.
+				info.total_reward - first_paid
+			} else {
+				(info.total_reward - first_paid)
+					.saturating_mul(payable_period.into())
+					/ period.into()
+			};
 
 			// If the period is bigger than whats missing to pay, then return whats missing to pay
 			let payable_amount = if should_have_claimed >= (info.total_reward - first_paid) {
