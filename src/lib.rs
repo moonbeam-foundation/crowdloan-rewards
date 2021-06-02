@@ -68,10 +68,12 @@ mod benchmarks;
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
+pub mod weights;
 
 #[pallet]
 pub mod pallet {
 
+	use crate::weights::WeightInfo;
 	use cumulus_primitives_core::relay_chain;
 	use frame_support::{
 		dispatch::fmt::Debug,
@@ -123,6 +125,8 @@ pub mod pallet {
 		/// than the lease period to ensure contributors vest the tokens during the lease
 		#[pallet::constant]
 		type VestingPeriod: Get<relay_chain::BlockNumber>;
+
+		type WeightInfo: WeightInfo;
 	}
 
 	pub type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
@@ -165,7 +169,9 @@ pub mod pallet {
 		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
 		/// state of the relay chain, we should first check whether that memo field exists in the
 		/// contribution
-		#[pallet::weight(0)]
+		/// Weight argument is 0 since it depends on how the storage trie is composed
+		/// Once we have the number of contributors, we can probably add such a weight here
+		#[pallet::weight(T::WeightInfo::associate_native_identity(0))]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
 			reward_account: <T as frame_system::Config>::AccountId,
@@ -179,6 +185,7 @@ pub mod pallet {
 			// 2. Signs a valid native identity
 			// Check the proof. The Proof consists of a Signature of the rewarded account with the
 			// claimer key
+
 			let payload = reward_account.encode();
 			ensure!(
 				proof.verify(payload.as_slice(), &relay_account.clone().into()),
@@ -233,7 +240,9 @@ pub mod pallet {
 
 		/// Collect whatever portion of your reward are currently vested. The first time each
 		/// contributor calls this function pays no fees
-		#[pallet::weight(0)]
+		/// Weight argument is 0 since it depends on how the storage trie is composed
+		/// Once we have the number of contributors, we can probably add such a weight here
+		#[pallet::weight(T::WeightInfo::show_me_the_money(0))]
 		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -264,8 +273,7 @@ pub mod pallet {
 				// Pallet is configured with a zero vesting period.
 				info.total_reward - first_paid
 			} else {
-				(info.total_reward - first_paid)
-					.saturating_mul(payable_period.into())
+				(info.total_reward - first_paid).saturating_mul(payable_period.into())
 					/ period.into()
 			};
 
@@ -292,7 +300,9 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 		/// Update reward address. To determine whether its something we want to keep
-		#[pallet::weight(0)]
+		/// Weight argument is 0 since it depends on how the storage trie is composed
+		/// Once we have the number of contributors, we can probably add such a weight here
+		#[pallet::weight(T::WeightInfo::update_reward_address(0))]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
 			new_reward_account: <T as frame_system::Config>::AccountId,
@@ -328,11 +338,16 @@ pub mod pallet {
 		/// We can change this behavior to check this beforehand if we prefer
 		/// We only set this to "initialized" once we receive index==limit
 		/// This is expected to be executed with batch_all, that atomically initializes contributions
-		/// TODO Should we perform sanity checks here? (i.e., min contribution)
-		#[pallet::weight(0)]
+		/// Weight depends on the number of contributors inserted already (index) plus
+		/// the new contributors inserted.
+		#[pallet::weight(T::WeightInfo::initialize_reward_vec(*index, rewards.len() as u32))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			rewards: Vec<(T::RelayChainAccountId, Option<<T as frame_system::Config>::AccountId>, BalanceOf<T>)>,
+			rewards: Vec<(
+				T::RelayChainAccountId,
+				Option<<T as frame_system::Config>::AccountId>,
+				BalanceOf<T>,
+			)>,
 			index: u32,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
@@ -542,12 +557,19 @@ pub mod pallet {
 		InitialPaymentMade(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(T::RelayChainAccountId, <T as frame_system::Config>::AccountId, BalanceOf<T>),
+		NativeIdentityAssociated(
+			T::RelayChainAccountId,
+			<T as frame_system::Config>::AccountId,
+			BalanceOf<T>,
+		),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::AccountId),
+		RewardAddressUpdated(
+			<T as frame_system::Config>::AccountId,
+			<T as frame_system::Config>::AccountId,
+		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
