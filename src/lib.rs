@@ -240,10 +240,8 @@ pub mod pallet {
 
 		/// Collect whatever portion of your reward are currently vested. The first time each
 		/// contributor calls this function pays no fees
-		/// Weight argument is 0 since it depends on how the storage trie is composed
-		/// Once we have the number of contributors, we can probably add such a weight here
-		#[pallet::weight(T::WeightInfo::show_me_the_money(0))]
-		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		#[pallet::weight(T::WeightInfo::claim(0))]
+		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
 			ensure!(initialized, Error::<T>::RewardVecNotFullyInitializedYet);

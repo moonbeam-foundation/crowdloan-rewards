@@ -150,33 +150,33 @@ fn paying_works_step_by_step() {
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(4);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 200);
 		assert_noop!(
-			Crowdloan::show_me_the_money(Origin::signed(3)),
+			Crowdloan::claim(Origin::signed(3)),
 			Error::<Test>::NoAssociatedClaim
 		);
 		roll_to(5);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
 		roll_to(6);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 300);
 		roll_to(7);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 350);
 		roll_to(8);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 400);
 		roll_to(9);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 450);
 		roll_to(10);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
 		roll_to(11);
 		assert_noop!(
-			Crowdloan::show_me_the_money(Origin::signed(1)),
+			Crowdloan::claim(Origin::signed(1)),
 			Error::<Test>::RewardsAlreadyClaimed
 		);
 
@@ -215,27 +215,27 @@ fn paying_works_after_unclaimed_period() {
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(4);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 200);
 		assert_noop!(
-			Crowdloan::show_me_the_money(Origin::signed(3)),
+			Crowdloan::claim(Origin::signed(3)),
 			Error::<Test>::NoAssociatedClaim
 		);
 		roll_to(5);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
 		roll_to(6);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 300);
 		roll_to(7);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 350);
 		roll_to(11);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
 		roll_to(330);
 		assert_noop!(
-			Crowdloan::show_me_the_money(Origin::signed(1)),
+			Crowdloan::claim(Origin::signed(1)),
 			Error::<Test>::RewardsAlreadyClaimed
 		);
 
@@ -278,7 +278,7 @@ fn paying_late_joiner_works() {
 			pairs[0].public().into(),
 			signature.clone()
 		));
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().claimed_reward, 500);
 		let expected = vec![
 			crate::Event::InitialPaymentMade(1, 100),
@@ -310,15 +310,15 @@ fn update_address_works() {
 		));
 
 		roll_to(4);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_noop!(
-			Crowdloan::show_me_the_money(Origin::signed(8)),
+			Crowdloan::claim(Origin::signed(8)),
 			Error::<Test>::NoAssociatedClaim
 		);
 		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 8));
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 200);
 		roll_to(6);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(8)));
+		assert_ok!(Crowdloan::claim(Origin::signed(8)));
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 300);
 		// The initial payment is not
 		let expected = vec![
@@ -351,16 +351,16 @@ fn update_address_with_existing_address_works() {
 		));
 
 		roll_to(4);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(1)));
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(2)));
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
+		assert_ok!(Crowdloan::claim(Origin::signed(2)));
 		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
 		assert_noop!(
-			Crowdloan::show_me_the_money(Origin::signed(1)),
+			Crowdloan::claim(Origin::signed(1)),
 			Error::<Test>::NoAssociatedClaim
 		);
 		roll_to(6);
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(2)));
+		assert_ok!(Crowdloan::claim(Origin::signed(2)));
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 600);
 		let expected = vec![
 			crate::Event::InitialPaymentMade(1, 100),
@@ -485,7 +485,7 @@ fn floating_point_arithmetic_works() {
 		// Total claimed reward: 25+25 = 50
 		roll_to(4);
 
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
@@ -493,7 +493,7 @@ fn floating_point_arithmetic_works() {
 		);
 		roll_to(5);
 		// If we claim now we have to pay 12.5. 12 will be paid.
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
@@ -503,7 +503,7 @@ fn floating_point_arithmetic_works() {
 		// Now we should pay 12.5. However the calculus will be:
 		// Account 3 should have claimed 50 + 25 at this block, but
 		// he only claimed 62. The payment is 13
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
 			75u128
@@ -554,7 +554,7 @@ fn reward_below_vesting_period_works() {
 		// Total claimed reward: 1+1 = 2
 		roll_to(4);
 
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
@@ -562,7 +562,7 @@ fn reward_below_vesting_period_works() {
 		);
 		roll_to(5);
 		// If we claim now we have to pay floor(0.625) = 0
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
@@ -571,14 +571,14 @@ fn reward_below_vesting_period_works() {
 		roll_to(6);
 		// Now we should pay 1 again. The claimer should have claimed floor(0.625*4) + 1
 		// but he only claimed 2
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
 			3u128
 		);
 		roll_to(10);
 		// We pay the remaining
-		assert_ok!(Crowdloan::show_me_the_money(Origin::signed(3)));
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
 			6u128
@@ -586,7 +586,7 @@ fn reward_below_vesting_period_works() {
 		roll_to(11);
 		// Nothing more to claim
 		assert_noop!(
-			Crowdloan::show_me_the_money(Origin::signed(3)),
+			Crowdloan::claim(Origin::signed(3)),
 			Error::<Test>::RewardsAlreadyClaimed
 		);
 
