@@ -184,7 +184,7 @@ benchmarks! {
 		assert!(Pallet::<T>::initialized());
 	}
 
-show_me_the_money {
+claim {
 		let x in 1..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -355,9 +355,9 @@ mod tests {
 		});
 	}
 	#[test]
-	fn bench_show_me_the_money() {
+	fn bench_claim() {
 		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_show_me_the_money::<Test>());
+			assert_ok!(test_benchmark_claim::<Test>());
 		});
 	}
 	#[test]
