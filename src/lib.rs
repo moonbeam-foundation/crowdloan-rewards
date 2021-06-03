@@ -231,7 +231,7 @@ pub mod pallet {
 		/// Collect whatever portion of your reward are currently vested. The first time each
 		/// contributor calls this function pays no fees
 		#[pallet::weight(0)]
-		pub fn show_me_the_money(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
 			ensure!(initialized, Error::<T>::RewardVecNotFullyInitializedYet);
