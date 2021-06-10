@@ -24,7 +24,7 @@
 //! Vesting is linear. This pallet stores a constant "InitializationPayment" that defines the
 //! percentage of the tokens that are vested when the contribution addresses are initialized. This
 //! is conceived as a mechanism to ensure contributors have enough money to pay for the fees once
-//! they want to claim them
+//! they want to claim the rewards
 //!
 //! The rest unlocks linearly until a predecided block number. Vesting computations happen on demand
 //! when payouts are requested. So no block weight is ever wasted on this, and there is no
@@ -161,10 +161,9 @@ pub mod pallet {
 		/// Contributors might issue an additional addmemo transaction if they want to receive
 		/// the reward in a parachain native account. In such a case this extrinsic is not needed
 		///
-		/// For the moment I will leave this function here
-		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
-		/// state of the relay chain, we should first check whether that memo field exists in the
-		/// contribution
+		/// For the moment I will leave this function here just in case the contributor forgot to
+		/// add such a memo field. Whenever we can read the state of the relay chain, we should
+		/// first check whether that memo field exists in the contribution
 		#[pallet::weight(0)]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
@@ -263,8 +262,7 @@ pub mod pallet {
 				// Pallet is configured with a zero vesting period.
 				info.total_reward - first_paid
 			} else {
-				(info.total_reward - first_paid)
-					.saturating_mul(payable_period.into())
+				(info.total_reward - first_paid).saturating_mul(payable_period.into())
 					/ period.into()
 			};
 
@@ -333,7 +331,11 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			rewards: Vec<(T::RelayChainAccountId, Option<<T as frame_system::Config>::AccountId>, BalanceOf<T>)>,
+			rewards: Vec<(
+				T::RelayChainAccountId,
+				Option<<T as frame_system::Config>::AccountId>,
+				BalanceOf<T>,
+			)>,
 			index: u32,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
@@ -543,12 +545,19 @@ pub mod pallet {
 		InitialPaymentMade(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account, native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(T::RelayChainAccountId, <T as frame_system::Config>::AccountId, BalanceOf<T>),
+		NativeIdentityAssociated(
+			T::RelayChainAccountId,
+			<T as frame_system::Config>::AccountId,
+			BalanceOf<T>,
+		),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::AccountId),
+		RewardAddressUpdated(
+			<T as frame_system::Config>::AccountId,
+			<T as frame_system::Config>::AccountId,
+		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
