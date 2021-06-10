@@ -273,7 +273,7 @@ pub mod pallet {
 				should_have_claimed + first_paid - info.claimed_reward
 			};
 
-			info.claimed_reward = info.claimed_reward.saturating_add(payable_amount);
+			info.claimed_reward = info.claimed_reward.checked_add(payable_amount);
 			AccountsPayable::<T>::insert(&payee, &info);
 
 			// This pallet controls an amount of funds and transfers them to each of the contributors
@@ -301,12 +301,18 @@ pub mod pallet {
 				AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
 
 			if let Some(info_existing_account) = AccountsPayable::<T>::get(&new_reward_account) {
-				info.total_reward = info
+				let total_reward_to_update = info
 					.total_reward
-					.saturating_add(info_existing_account.total_reward);
-				info.claimed_reward = info
+					.checked_Add(info_existing_account.total_reward);
+				let claimed_reward_to_update = info
 					.claimed_reward
 					.saturating_add(info_existing_account.claimed_reward);
+				ensure!(
+					reward_to_add.is_some() && claimed_reward_to_update.is_some(),
+					Error::<T>::AdditionOverflow
+				);
+				info.total_reward = total_reward_to_update.unwrap();
+				info.claimed_reward = claimed_reward_to_update.unwrap();
 			}
 
 			// Remove previous rewarded account
@@ -451,6 +457,8 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
+		/// Addition in this pallet caused overflow
+		AdditionOverflow,
 		/// Trying to introduce a batch that goes beyond the limits of the funds
 		BatchBeyondFundPot,
 		/// First claim already done
