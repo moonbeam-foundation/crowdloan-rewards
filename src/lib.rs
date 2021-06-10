@@ -21,15 +21,17 @@
 //!
 //! ## Monetary Policy
 //!
-//! This is simple and mock for now. We can do whatever we want.
-//! This pallet stores a constant  "reward ratio" which is the number of reward tokens to pay per
-//! contributed token. In simple cases this can be 1, but needs to be customizeable to allow for
-//! vastly differing absolute token supplies between relay and para.
-//! Vesting is also linear. No tokens are vested at genesis and they unlock linearly until a
-//! predecided block number. Vesting computations happen on demand when payouts are requested. So
-//! no block weight is ever wasted on this, and there is no "base-line" cost of updating vestings.
-//! Like I said, we can anything we want there. Even a non-linear reward curve to disincentivize
-//! whales.
+//! Vesting is linear. This pallet stores a constant "InitializationPayment" that defines the
+//! percentage of the tokens that are vested when the contribution addresses are initialized. This
+//! is conceived as a mechanism to ensure contributors have enough money to pay for the fees once
+//! they want to claim them
+//!
+//! The rest unlocks linearly until a predecided block number. Vesting computations happen on demand
+//! when payouts are requested. So no block weight is ever wasted on this, and there is no
+//! "base-line" cost of updating vestings. Importantly, the vesting is counted with respect to the
+//! Relay Chain height, and not with respect to the Parachain Height. This makes sure that even in
+//! the case of a parachain stall, the rewards will continue to be vested if the Relay Chain
+//! livesness does not get affected.
 //!
 //! ## Payout Mechanism
 //!
@@ -45,8 +47,7 @@
 //! * **Through the initialize_reward_vec extrinsic*
 //!
 //! The simplest way is to call the initialize_reward_vec through a democracy proposal/sudo call.
-//! This makes sense in a scenario where the crowdloan took place entirely offchain.
-//! This extrinsic initializes the associated and unassociated stoerage with the provided data
+//! This extrinsic initializes the associated and unassociated storage with the provided data
 //!
 //! * **ReadingRelayState**
 //!
@@ -83,7 +84,6 @@ pub mod pallet {
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec::Vec;
 
-	/// The Author Filter pallet
 	#[pallet::pallet]
 	pub struct Pallet<T>(PhantomData<T>);
 
@@ -105,8 +105,6 @@ pub mod pallet {
 		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<<Self as frame_system::Config>::AccountId>;
-		// TODO What trait bounds do I need here? I think concretely we would
-		// be using MultiSigner? Or maybe MultiAccount? I copied these from frame_system
 		/// The AccountId type contributors used on the relay chain.
 		type RelayChainAccountId: Parameter
 			+ Member
@@ -135,7 +133,8 @@ pub mod pallet {
 		pub claimed_reward: BalanceOf<T>,
 	}
 
-	// This hook is in charge of initializing the relay chain height at the first block of the parachain
+	/// This hook is in charge of initializing the relay chain height at the first block
+	/// of the parachain
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_finalize(n: <T as frame_system::Config>::BlockNumber) {
@@ -153,12 +152,16 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Associate a native rewards_destination identity with a crowdloan contribution.
 		///
-		/// This is an unsigned call because the caller may not have any funds to pay fees with.
 		/// This is inspired by Polkadot's claims pallet:
 		/// https://github.com/paritytech/polkadot/blob/master/runtime/common/src/claims.rs
 		///
-		/// The contributor needs to issue an additional addmemo transaction if it wants to receive
-		/// the reward in a parachain native account. For the moment I will leave this function here
+		/// In order to associate it, a signature of the accountId in which to receive the rewards
+		/// with the Relay Chain account needs to be provided
+		///
+		/// Contributors might issue an additional addmemo transaction if they want to receive
+		/// the reward in a parachain native account. In such a case this extrinsic is not needed
+		///
+		/// For the moment I will leave this function here
 		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
 		/// state of the relay chain, we should first check whether that memo field exists in the
 		/// contribution
@@ -228,8 +231,7 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// Collect whatever portion of your reward are currently vested. The first time each
-		/// contributor calls this function pays no fees
+		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(0)]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
@@ -277,7 +279,7 @@ pub mod pallet {
 			AccountsPayable::<T>::insert(&payee, &info);
 
 			// This pallet controls an amount of funds and transfers them to each of the contributors
-			//TODO: contributors should have the balance locked for tranfers but not for democracy
+			//TODO: contributors should have the balance locked for transfers but not for democracy
 			T::RewardCurrency::transfer(
 				&PALLET_ID.into_account(),
 				&payee,
@@ -321,11 +323,13 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
+		/// Initialize the reward distribution storage.
 		/// We can change this behavior to check this beforehand if we prefer
 		/// We only set this to "initialized" once we receive index==limit
 		/// This is expected to be executed with batch_all, that atomically initializes contributions
-		/// TODO Should we perform sanity checks here? (i.e., min contribution)
+		/// The reason being that initializing all contributors at once might not be possible due
+		/// to weight limits
+		/// Once all contributors are initialized, this cannot be called again
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -538,7 +542,7 @@ pub mod pallet {
 		/// The initial payment of InitializationPayment % was paid
 		InitialPaymentMade(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
-		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
+		/// Data is the relay account, native account and the total amount of _rewards_ that will be paid
 		NativeIdentityAssociated(T::RelayChainAccountId, <T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
