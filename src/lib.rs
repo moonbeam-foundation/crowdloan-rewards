@@ -79,7 +79,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
+	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify, CheckedAdd};
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec::Vec;
 
@@ -354,20 +354,37 @@ pub mod pallet {
 
 			let incoming_rewards: BalanceOf<T> = rewards
 				.iter()
-				.fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {
-					acc + *reward
+				.try_fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {
+					acc.checked_add(*reward)
 				});
+
+			// This is where we need to ensure we do not overflow. All subsequent payments
+			// will be based on these checks.
+
+			// Ensure we do not overflow.
+			ensure!(
+				incoming_rewards.is_some(),
+				Error::<T>::AdditionOverflow
+			);
+
+			let total_rewards = incoming_rewards.unwrap() + current_initialized_rewards;
+
+			// Ensure we do not overflow
+			ensure!(
+				total_rewards.is_some(),
+				Error::<T>::AdditionOverflow
+			);
 
 			// Ensure we dont go over funds
 			ensure!(
-				current_initialized_rewards + incoming_rewards <= Self::pot(),
+				total_rewards <= Self::pot(),
 				Error::<T>::BatchBeyondFundPot
 			);
 
 			// Let's ensure we can close initialization
 			if index + rewards.len() as u32 == limit {
 				ensure!(
-					current_initialized_rewards + incoming_rewards == Self::pot(),
+					total_rewards == Self::pot(),
 					Error::<T>::RewardsDoNotMatchFund
 				);
 			}
