@@ -108,6 +108,8 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type MaxLocks = ();
 	type Balance = Balance;
 	type Event = Event;
@@ -179,7 +181,7 @@ pub(crate) fn events() -> Vec<super::Event<Test>> {
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let Event::pallet_crowdloan_rewards(inner) = e {
+			if let Event::Crowdloan(inner) = e {
 				Some(inner)
 			} else {
 				None
@@ -193,7 +195,7 @@ pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let Event::pallet_utility(inner) = e {
+			if let Event::Utility(inner) = e {
 				Some(inner)
 			} else {
 				None
