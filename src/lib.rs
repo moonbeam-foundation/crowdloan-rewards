@@ -339,11 +339,17 @@ pub mod pallet {
 				Error::<T>::RewardVecAlreadyInitialized
 			);
 
+
 			// This implies single DB READ + WRITE the first time
 			// Subsequent batch calls to this function only imply a DB read
 			// Here we only read End Relay block, and this is the reason why
 			// I have made Init and End be in separate storages
 			if EndRelayBlock::<T>::get() == 0 {
+				// We need to make sure that it's greater than the init relay block
+				ensure!(
+					lease_ending_block > EndRelayBlock::<T>::get(),
+					Error::<T>::VestingPeriodNonValid
+				);
 				EndRelayBlock::<T>::put(lease_ending_block);
 			}
 
@@ -482,6 +488,8 @@ pub mod pallet {
 		RewardVecNotFullyInitializedYet,
 		/// Reward vec has already been initialized
 		RewardsDoNotMatchFund,
+		/// Provided vesting period is not valid
+		VestingPeriodNonValid,
 	}
 
 	#[pallet::genesis_config]
