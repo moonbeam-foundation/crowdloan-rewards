@@ -115,11 +115,6 @@ pub mod pallet {
 			+ Default
 			+ Debug
 			+ Into<AccountId32>;
-
-		/// The total vesting period. Ideally this should be less or equal
-		/// than the lease period to ensure contributors vest the tokens during the lease
-		#[pallet::constant]
-		type VestingPeriod: Get<relay_chain::BlockNumber>;
 	}
 
 	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
@@ -256,13 +251,12 @@ pub mod pallet {
 
 			// How much should the contributor have already claimed by this block?
 			// By multiplying first we allow the conversion to integer done with the biggest number
-			let period = T::VestingPeriod::get();
+			let period = EndRelayBlock::<T>::get() - InitRelayBlock::<T>::get();
 			let should_have_claimed = if period == 0 {
 				// Pallet is configured with a zero vesting period.
 				info.total_reward - first_paid
 			} else {
-				(info.total_reward - first_paid)
-					.saturating_mul(payable_period.into())
+				(info.total_reward - first_paid).saturating_mul(payable_period.into())
 					/ period.into()
 			};
 
@@ -329,9 +323,14 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			rewards: Vec<(T::RelayChainAccountId, Option<<T as frame_system::Config>::AccountId>, BalanceOf<T>)>,
+			rewards: Vec<(
+				T::RelayChainAccountId,
+				Option<<T as frame_system::Config>::AccountId>,
+				BalanceOf<T>,
+			)>,
 			index: u32,
 			limit: u32,
+			lease_ending_block: relay_chain::BlockNumber,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -339,6 +338,14 @@ pub mod pallet {
 				initialized == false,
 				Error::<T>::RewardVecAlreadyInitialized
 			);
+
+			// This implies single DB READ + WRITE the first time
+			// Subsequent batch calls to this function only imply a DB read
+			// Here we only read End Relay block, and this is the reason why
+			// I have made Init and End be in separate storages
+			if EndRelayBlock::<T>::get() == 0 {
+				EndRelayBlock::<T>::put(lease_ending_block);
+			}
 
 			// What is the amount initialized so far?
 			let mut current_initialized_rewards = InitializedRewardAmount::<T>::get();
@@ -522,6 +529,11 @@ pub mod pallet {
 	type InitRelayBlock<T: Config> = StorageValue<_, relay_chain::BlockNumber, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn end_relay_block)]
+	/// Relay block height at the initialization of the pallet
+	type EndRelayBlock<T: Config> = StorageValue<_, relay_chain::BlockNumber, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn init_reward_amount)]
 	/// Total initialized amount so far. We store this to make pallet funds == contributors reward
 	/// check easier and more efficient
@@ -539,12 +551,19 @@ pub mod pallet {
 		InitialPaymentMade(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(T::RelayChainAccountId, <T as frame_system::Config>::AccountId, BalanceOf<T>),
+		NativeIdentityAssociated(
+			T::RelayChainAccountId,
+			<T as frame_system::Config>::AccountId,
+			BalanceOf<T>,
+		),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::AccountId),
+		RewardAddressUpdated(
+			<T as frame_system::Config>::AccountId,
+			<T as frame_system::Config>::AccountId,
+		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
