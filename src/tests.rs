@@ -460,7 +460,6 @@ fn initialize_new_addresses_with_batch() {
 		// Verify that the second ending block provider had no effect
 		assert_eq!(Crowdloan::end_relay_block(), init_block + VESTING);
 
-		assert_eq!(Crowdloan::total_contributors(), 2);
 		// Batch calls always succeed. We just need to check the inner event
 		assert_ok!(
 			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
