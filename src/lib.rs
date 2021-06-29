@@ -101,6 +101,8 @@ pub mod pallet {
 		/// Percentage to be payed at initialization
 		#[pallet::constant]
 		type InitializationPayment: Get<Perbill>;
+		#[pallet::constant]
+		type MaxInitContributors: Get<u32>;
 		/// The minimum contribution to which rewards will be paid.
 		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
@@ -356,6 +358,7 @@ pub mod pallet {
 		}
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
+		/// We check that the number of contributors inserted is less than T::MaxInitContributors::get()
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -370,6 +373,12 @@ pub mod pallet {
 			ensure!(
 				initialized == false,
 				Error::<T>::RewardVecAlreadyInitialized
+			);
+
+			// Ensure we are below the max number of contributors
+			ensure!(
+				rewards.len() as u32 <= T::MaxInitContributors::get(),
+				Error::<T>::TooManyContributors
 			);
 
 			// What is the amount initialized so far?
@@ -496,6 +505,8 @@ pub mod pallet {
 		RewardVecNotFullyInitializedYet,
 		/// Reward vec has already been initialized
 		RewardsDoNotMatchFund,
+		/// Initialize_reward_vec received too many contributors
+		TooManyContributors,
 		/// Provided vesting period is not valid
 		VestingPeriodNonValid,
 	}

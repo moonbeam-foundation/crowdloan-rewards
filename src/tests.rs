@@ -673,6 +673,25 @@ fn test_initialization_errors() {
 
 		let pot = Crowdloan::pot();
 
+		// Too many contributors
+		assert_noop!(
+			Crowdloan::initialize_reward_vec(
+				Origin::root(),
+				vec![
+					([1u8; 32].into(), Some(1), 1),
+					([2u8; 32].into(), Some(2), 1),
+					([3u8; 32].into(), Some(3), 1),
+					([4u8; 32].into(), Some(4), 1),
+					([5u8; 32].into(), Some(5), 1),
+					([6u8; 32].into(), Some(6), 1),
+					([7u8; 32].into(), Some(7), 1),
+					([8u8; 32].into(), Some(8), 1),
+					([9u8; 32].into(), Some(9), 1)
+				]
+			),
+			Error::<Test>::TooManyContributors
+		);
+
 		// Go beyond fund pot
 		assert_noop!(
 			Crowdloan::initialize_reward_vec(
