@@ -40,9 +40,10 @@ fn geneses() {
 				(pairs[0].public().into(), None, 500u32.into()),
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
-			],
-			0,
-			5,
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
 		assert_eq!(Crowdloan::total_contributors(), 5);
@@ -87,8 +88,9 @@ fn proving_assignation_works() {
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
 			],
-			0,
-			5,
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
 		// 4 is not payable first
@@ -152,9 +154,10 @@ fn paying_works_step_by_step() {
 				(pairs[0].public().into(), None, 500u32.into()),
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
-			],
-			0,
-			5,
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
 		// 1 is payable
@@ -221,11 +224,13 @@ fn paying_works_after_unclaimed_period() {
 				(pairs[0].public().into(), None, 500u32.into()),
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
-			],
-			0,
-			5,
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
+
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
 		roll_to(4);
@@ -282,11 +287,13 @@ fn paying_late_joiner_works() {
 				(pairs[0].public().into(), None, 500u32.into()),
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
-			],
-			0,
-			5,
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
+
 		roll_to(12);
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
@@ -323,9 +330,10 @@ fn update_address_works() {
 				(pairs[0].public().into(), None, 500u32.into()),
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
-			],
-			0,
-			5,
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
 
@@ -368,9 +376,10 @@ fn update_address_with_existing_address_works() {
 				(pairs[0].public().into(), None, 500u32.into()),
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
-			],
-			0,
-			5,
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
 
@@ -414,22 +423,26 @@ fn initialize_new_addresses() {
 				(pairs[0].public().into(), None, 500u32.into()),
 				(pairs[1].public().into(), None, 500u32.into()),
 				(pairs[2].public().into(), None, 500u32.into())
-			],
-			0,
-			5,
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
 			init_block + VESTING
 		));
+
 		assert_eq!(Crowdloan::initialized(), true);
 
 		roll_to(4);
 		assert_noop!(
 			Crowdloan::initialize_reward_vec(
 				Origin::root(),
-				vec![([1u8; 32].into(), Some(1), 500u32.into())],
-				0,
-				1,
-				init_block + VESTING
+				vec![([1u8; 32].into(), Some(1), 500u32.into())]
 			),
+			Error::<Test>::RewardVecAlreadyInitialized,
+		);
+
+		assert_noop!(
+			Crowdloan::complete_initialiation(Origin::root(), init_block + VESTING * 2),
 			Error::<Test>::RewardVecAlreadyInitialized,
 		);
 	});
@@ -442,20 +455,22 @@ fn initialize_new_addresses_with_batch() {
 		roll_to(10);
 		let init_block = Crowdloan::init_relay_block();
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(3), 1250)],
-				0,
-				2,
-				init_block + VESTING
-			)),
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(1), 1250)],
-				1,
-				2,
-				init_block + VESTING * 2
-			))
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[4u8; 32].into(),
+				Some(3),
+				1250
+			)],)),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[5u8; 32].into(),
+				Some(1),
+				1250
+			)],))
 		]))
 		.dispatch(Origin::root()));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
+			init_block + VESTING
+		));
 		assert_eq!(Crowdloan::total_contributors(), 2);
 		// Verify that the second ending block provider had no effect
 		assert_eq!(Crowdloan::end_relay_block(), init_block + VESTING);
@@ -463,12 +478,7 @@ fn initialize_new_addresses_with_batch() {
 		// Batch calls always succeed. We just need to check the inner event
 		assert_ok!(
 			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
-				crate::Call::initialize_reward_vec(
-					vec![([4u8; 32].into(), Some(3), 500)],
-					0,
-					1,
-					init_block + VESTING
-				)
+				crate::Call::initialize_reward_vec(vec![([4u8; 32].into(), Some(3), 500)])
 			)]))
 			.dispatch(Origin::root())
 		);
@@ -495,27 +505,28 @@ fn floating_point_arithmetic_works() {
 		roll_to(2);
 		let init_block = Crowdloan::init_relay_block();
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(1), 1190)],
-				0,
-				3,
-				init_block + VESTING
-			)),
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(2), 1185)],
-				1,
-				3,
-				init_block + VESTING
-			)),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[4u8; 32].into(),
+				Some(1),
+				1190
+			)])),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[5u8; 32].into(),
+				Some(2),
+				1185
+			)])),
 			// We will work with this. This has 100/8=12.5 payable per block
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([3u8; 32].into(), Some(3), 125)],
-				2,
-				3,
-				init_block + VESTING
-			))
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[3u8; 32].into(),
+				Some(3),
+				125
+			)]))
 		]))
 		.dispatch(Origin::root()));
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
+			init_block + VESTING
+		));
 		assert_eq!(Crowdloan::total_contributors(), 3);
 
 		assert_eq!(
@@ -570,27 +581,29 @@ fn reward_below_vesting_period_works() {
 		roll_to(2);
 		let init_block = Crowdloan::init_relay_block();
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([4u8; 32].into(), Some(1), 1247)],
-				0,
-				3,
-				init_block + VESTING
-			)),
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([5u8; 32].into(), Some(2), 1247)],
-				1,
-				3,
-				init_block + VESTING
-			)),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[4u8; 32].into(),
+				Some(1),
+				1247
+			)])),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[5u8; 32].into(),
+				Some(2),
+				1247
+			)])),
 			// We will work with this. This has 5/8=0.625 payable per block
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(
-				vec![([3u8; 32].into(), Some(3), 6)],
-				2,
-				3,
-				init_block + VESTING
-			))
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+				[3u8; 32].into(),
+				Some(3),
+				6
+			)]))
 		]))
 		.dispatch(Origin::root()));
+
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
+			init_block + VESTING
+		));
 
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
@@ -648,5 +661,65 @@ fn reward_below_vesting_period_works() {
 			crate::Event::RewardsPaid(3, 3),
 		];
 		assert_eq!(events(), expected);
+	});
+}
+
+#[test]
+fn test_initialization_errors() {
+	empty().execute_with(|| {
+		// The init relay block gets inserted
+		roll_to(2);
+		let init_block = Crowdloan::init_relay_block();
+
+		let pot = Crowdloan::pot();
+
+		// Go beyond fund pot
+		assert_noop!(
+			Crowdloan::initialize_reward_vec(
+				Origin::root(),
+				vec![([1u8; 32].into(), Some(1), pot + 1)]
+			),
+			Error::<Test>::BatchBeyondFundPot
+		);
+
+		// Dont fill rewards
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![([1u8; 32].into(), Some(1), pot - 1)]
+		));
+
+		assert_noop!(
+			Crowdloan::complete_initialiation(Origin::root(), init_block + VESTING),
+			Error::<Test>::RewardsDoNotMatchFund
+		);
+
+		// Fill rewards
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![([2u8; 32].into(), Some(2), 1)]
+		));
+
+		// Insert a non-valid vesting period
+		assert_noop!(
+			Crowdloan::complete_initialiation(Origin::root(), init_block),
+			Error::<Test>::VestingPeriodNonValid
+		);
+
+		// Cannot claim if we dont complete initialization
+		assert_noop!(
+			Crowdloan::claim(Origin::signed(1)),
+			Error::<Test>::RewardVecNotFullyInitializedYet
+		);
+		// Complete
+		assert_ok!(Crowdloan::complete_initialiation(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		// Cannot initialize again
+		assert_noop!(
+			Crowdloan::complete_initialiation(Origin::root(), init_block),
+			Error::<Test>::RewardVecAlreadyInitialized
+		);
 	});
 }

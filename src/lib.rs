@@ -223,8 +223,7 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// Collect whatever portion of your reward are currently vested. The first time each
-		/// contributor calls this function pays no fees
+		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(0)]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
@@ -282,6 +281,7 @@ pub mod pallet {
 			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
 			Ok(Default::default())
 		}
+
 		/// Update reward address. To determine whether its something we want to keep
 		#[pallet::weight(0)]
 		pub fn update_reward_address(
@@ -315,11 +315,47 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
+		/// This extrinsic completes the initialization if some checks are fullfiled. These checks are:
+		///  -The reward contribution money matches the crowdloan pot
+		///  -The end relay block is higher than the init relay block
+		///  -The initialization has not complete yet
+		#[pallet::weight(0)]
+		pub fn complete_initialiation(
+			origin: OriginFor<T>,
+			lease_ending_block: relay_chain::BlockNumber,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+
+			let initialized = <Initialized<T>>::get();
+
+			// This ensures there was no prior initialization
+			ensure!(
+				initialized == false,
+				Error::<T>::RewardVecAlreadyInitialized
+			);
+
+			// This ensures the lease ending block is bigger than the init relay block
+			ensure!(
+				lease_ending_block > InitRelayBlock::<T>::get(),
+				Error::<T>::VestingPeriodNonValid
+			);
+
+			let current_initialized_rewards = InitializedRewardAmount::<T>::get();
+
+			// This ensures that the rewards match the pot
+			ensure!(
+				current_initialized_rewards == Self::pot(),
+				Error::<T>::RewardsDoNotMatchFund
+			);
+
+			EndRelayBlock::<T>::put(lease_ending_block);
+
+			<Initialized<T>>::put(true);
+
+			Ok(Default::default())
+		}
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
-		/// We only set this to "initialized" once we receive index==limit
-		/// This is expected to be executed with batch_all, that atomically initializes contributions
-		/// TODO Should we perform sanity checks here? (i.e., min contribution)
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -328,9 +364,6 @@ pub mod pallet {
 				Option<<T as frame_system::Config>::AccountId>,
 				BalanceOf<T>,
 			)>,
-			index: u32,
-			limit: u32,
-			lease_ending_block: relay_chain::BlockNumber,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -338,20 +371,6 @@ pub mod pallet {
 				initialized == false,
 				Error::<T>::RewardVecAlreadyInitialized
 			);
-
-
-			// This implies single DB READ + WRITE the first time
-			// Subsequent batch calls to this function only imply a DB read
-			// Here we only read End Relay block, and this is the reason why
-			// I have made Init and End be in separate storages
-			if EndRelayBlock::<T>::get() == 0 {
-				// We need to make sure that it's greater than the init relay block
-				ensure!(
-					lease_ending_block > EndRelayBlock::<T>::get(),
-					Error::<T>::VestingPeriodNonValid
-				);
-				EndRelayBlock::<T>::put(lease_ending_block);
-			}
 
 			// What is the amount initialized so far?
 			let mut current_initialized_rewards = InitializedRewardAmount::<T>::get();
@@ -370,14 +389,6 @@ pub mod pallet {
 				current_initialized_rewards + incoming_rewards <= Self::pot(),
 				Error::<T>::BatchBeyondFundPot
 			);
-
-			// Let's ensure we can close initialization
-			if index + rewards.len() as u32 == limit {
-				ensure!(
-					current_initialized_rewards + incoming_rewards == Self::pot(),
-					Error::<T>::RewardsDoNotMatchFund
-				);
-			}
 
 			for (relay_account, native_account, reward) in &rewards {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
@@ -440,10 +451,7 @@ pub mod pallet {
 			}
 			InitializedRewardAmount::<T>::put(current_initialized_rewards);
 			TotalContributors::<T>::put(total_contributors);
-			// Let's ensure we can close initialization
-			if index + rewards.len() as u32 == limit {
-				<Initialized<T>>::put(true);
-			}
+
 			Ok(Default::default())
 		}
 	}
@@ -454,7 +462,7 @@ pub mod pallet {
 			PALLET_ID.into_account()
 		}
 		/// The Account Id's balance
-		fn pot() -> BalanceOf<T> {
+		pub fn pot() -> BalanceOf<T> {
 			T::RewardCurrency::free_balance(&Self::account_id())
 		}
 	}
