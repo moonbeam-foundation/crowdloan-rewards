@@ -101,6 +101,7 @@ pub mod pallet {
 		/// Percentage to be payed at initialization
 		#[pallet::constant]
 		type InitializationPayment: Get<Perbill>;
+		// Max number of contributors that can be inserted at once in initialize_reward_vec
 		#[pallet::constant]
 		type MaxInitContributors: Get<u32>;
 		/// The minimum contribution to which rewards will be paid.
