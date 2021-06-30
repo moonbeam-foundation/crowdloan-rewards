@@ -120,7 +120,7 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const TestVestingPeriod: u32 = 8;
+	pub const TestMaxInitContributors: u32 = 8;
 	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
@@ -130,10 +130,10 @@ impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
 	type InitializationPayment = TestInitializationPayment;
+	type MaxInitContributors = TestMaxInitContributors;
 	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
-	type VestingPeriod = TestVestingPeriod;
 }
 
 impl pallet_utility::Config for Test {

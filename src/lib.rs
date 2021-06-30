@@ -101,10 +101,13 @@ pub mod pallet {
 		/// Percentage to be payed at initialization
 		#[pallet::constant]
 		type InitializationPayment: Get<Perbill>;
+		// Max number of contributors that can be inserted at once in initialize_reward_vec
+		#[pallet::constant]
+		type MaxInitContributors: Get<u32>;
 		/// The minimum contribution to which rewards will be paid.
 		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
-		type RewardCurrency: Currency<<Self as frame_system::Config>::AccountId>;
+		type RewardCurrency: Currency<Self::AccountId>;
 		// TODO What trait bounds do I need here? I think concretely we would
 		// be using MultiSigner? Or maybe MultiAccount? I copied these from frame_system
 		/// The AccountId type contributors used on the relay chain.
@@ -115,11 +118,6 @@ pub mod pallet {
 			+ Default
 			+ Debug
 			+ Into<AccountId32>;
-
-		/// The total vesting period. Ideally this should be less or equal
-		/// than the lease period to ensure contributors vest the tokens during the lease
-		#[pallet::constant]
-		type VestingPeriod: Get<relay_chain::BlockNumber>;
 	}
 
 	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
@@ -165,7 +163,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
-			reward_account: <T as frame_system::Config>::AccountId,
+			reward_account: T::AccountId,
 			relay_account: T::RelayChainAccountId,
 			proof: MultiSignature,
 		) -> DispatchResultWithPostInfo {
@@ -228,8 +226,7 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// Collect whatever portion of your reward are currently vested. The first time each
-		/// contributor calls this function pays no fees
+		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(0)]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
@@ -256,13 +253,12 @@ pub mod pallet {
 
 			// How much should the contributor have already claimed by this block?
 			// By multiplying first we allow the conversion to integer done with the biggest number
-			let period = T::VestingPeriod::get();
+			let period = EndRelayBlock::<T>::get() - InitRelayBlock::<T>::get();
 			let should_have_claimed = if period == 0 {
 				// Pallet is configured with a zero vesting period.
 				info.total_reward - first_paid
 			} else {
-				(info.total_reward - first_paid)
-					.saturating_mul(payable_period.into())
+				(info.total_reward - first_paid).saturating_mul(payable_period.into())
 					/ period.into()
 			};
 
@@ -288,11 +284,12 @@ pub mod pallet {
 			Self::deposit_event(Event::RewardsPaid(payee, payable_amount));
 			Ok(Default::default())
 		}
+
 		/// Update reward address. To determine whether its something we want to keep
 		#[pallet::weight(0)]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
-			new_reward_account: <T as frame_system::Config>::AccountId,
+			new_reward_account: T::AccountId,
 		) -> DispatchResultWithPostInfo {
 			let signer = ensure_signed(origin)?;
 
@@ -321,23 +318,64 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
+		/// This extrinsic completes the initialization if some checks are fullfiled. These checks are:
+		///  -The reward contribution money matches the crowdloan pot
+		///  -The end relay block is higher than the init relay block
+		///  -The initialization has not complete yet
+		#[pallet::weight(0)]
+		pub fn complete_initialiation(
+			origin: OriginFor<T>,
+			lease_ending_block: relay_chain::BlockNumber,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+
+			let initialized = <Initialized<T>>::get();
+
+			// This ensures there was no prior initialization
+			ensure!(
+				initialized == false,
+				Error::<T>::RewardVecAlreadyInitialized
+			);
+
+			// This ensures the lease ending block is bigger than the init relay block
+			ensure!(
+				lease_ending_block > InitRelayBlock::<T>::get(),
+				Error::<T>::VestingPeriodNonValid
+			);
+
+			let current_initialized_rewards = InitializedRewardAmount::<T>::get();
+
+			// This ensures that the rewards match the pot
+			ensure!(
+				current_initialized_rewards == Self::pot(),
+				Error::<T>::RewardsDoNotMatchFund
+			);
+
+			EndRelayBlock::<T>::put(lease_ending_block);
+
+			<Initialized<T>>::put(true);
+
+			Ok(Default::default())
+		}
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
-		/// We only set this to "initialized" once we receive index==limit
-		/// This is expected to be executed with batch_all, that atomically initializes contributions
-		/// TODO Should we perform sanity checks here? (i.e., min contribution)
+		/// We check that the number of contributors inserted is less than T::MaxInitContributors::get()
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			rewards: Vec<(T::RelayChainAccountId, Option<<T as frame_system::Config>::AccountId>, BalanceOf<T>)>,
-			index: u32,
-			limit: u32,
+			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let initialized = <Initialized<T>>::get();
 			ensure!(
 				initialized == false,
 				Error::<T>::RewardVecAlreadyInitialized
+			);
+
+			// Ensure we are below the max number of contributors
+			ensure!(
+				rewards.len() as u32 <= T::MaxInitContributors::get(),
+				Error::<T>::TooManyContributors
 			);
 
 			// What is the amount initialized so far?
@@ -357,14 +395,6 @@ pub mod pallet {
 				current_initialized_rewards + incoming_rewards <= Self::pot(),
 				Error::<T>::BatchBeyondFundPot
 			);
-
-			// Let's ensure we can close initialization
-			if index + rewards.len() as u32 == limit {
-				ensure!(
-					current_initialized_rewards + incoming_rewards == Self::pot(),
-					Error::<T>::RewardsDoNotMatchFund
-				);
-			}
 
 			for (relay_account, native_account, reward) in &rewards {
 				if ClaimedRelayChainIds::<T>::get(&relay_account).is_some()
@@ -427,21 +457,18 @@ pub mod pallet {
 			}
 			InitializedRewardAmount::<T>::put(current_initialized_rewards);
 			TotalContributors::<T>::put(total_contributors);
-			// Let's ensure we can close initialization
-			if index + rewards.len() as u32 == limit {
-				<Initialized<T>>::put(true);
-			}
+
 			Ok(Default::default())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
 		/// The account ID that holds the Crowdloan's funds
-		pub fn account_id() -> <T as frame_system::Config>::AccountId {
+		pub fn account_id() -> T::AccountId {
 			PALLET_ID.into_account()
 		}
 		/// The Account Id's balance
-		fn pot() -> BalanceOf<T> {
+		pub fn pot() -> BalanceOf<T> {
 			T::RewardCurrency::free_balance(&Self::account_id())
 		}
 	}
@@ -475,6 +502,10 @@ pub mod pallet {
 		RewardVecNotFullyInitializedYet,
 		/// Reward vec has already been initialized
 		RewardsDoNotMatchFund,
+		/// Initialize_reward_vec received too many contributors
+		TooManyContributors,
+		/// Provided vesting period is not valid
+		VestingPeriodNonValid,
 	}
 
 	#[pallet::genesis_config]
@@ -503,7 +534,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn accounts_payable)]
 	pub type AccountsPayable<T: Config> =
-		StorageMap<_, Blake2_128Concat, <T as frame_system::Config>::AccountId, RewardInfo<T>>;
+		StorageMap<_, Blake2_128Concat, T::AccountId, RewardInfo<T>>;
 	#[pallet::storage]
 	#[pallet::getter(fn claimed_relay_chain_ids)]
 	pub type ClaimedRelayChainIds<T: Config> =
@@ -522,6 +553,11 @@ pub mod pallet {
 	type InitRelayBlock<T: Config> = StorageValue<_, relay_chain::BlockNumber, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn end_relay_block)]
+	/// Relay block height at the initialization of the pallet
+	type EndRelayBlock<T: Config> = StorageValue<_, relay_chain::BlockNumber, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn init_reward_amount)]
 	/// Total initialized amount so far. We store this to make pallet funds == contributors reward
 	/// check easier and more efficient
@@ -536,25 +572,25 @@ pub mod pallet {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The initial payment of InitializationPayment % was paid
-		InitialPaymentMade(<T as frame_system::Config>::AccountId, BalanceOf<T>),
+		InitialPaymentMade(T::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(T::RelayChainAccountId, <T as frame_system::Config>::AccountId, BalanceOf<T>),
+		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
-		RewardsPaid(<T as frame_system::Config>::AccountId, BalanceOf<T>),
+		RewardsPaid(T::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::AccountId),
+		RewardAddressUpdated(T::AccountId, T::AccountId),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
-			Option<<T as frame_system::Config>::AccountId>,
+			Option<T::AccountId>,
 			BalanceOf<T>,
 		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAccountWithNotEnoughContribution(
 			T::RelayChainAccountId,
-			Option<<T as frame_system::Config>::AccountId>,
+			Option<T::AccountId>,
 			BalanceOf<T>,
 		),
 	}
