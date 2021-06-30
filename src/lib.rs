@@ -107,7 +107,7 @@ pub mod pallet {
 		/// The minimum contribution to which rewards will be paid.
 		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
-		type RewardCurrency: Currency<<Self as frame_system::Config>::AccountId>;
+		type RewardCurrency: Currency<Self::AccountId>;
 		// TODO What trait bounds do I need here? I think concretely we would
 		// be using MultiSigner? Or maybe MultiAccount? I copied these from frame_system
 		/// The AccountId type contributors used on the relay chain.
@@ -163,7 +163,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
-			reward_account: <T as frame_system::Config>::AccountId,
+			reward_account: T::AccountId,
 			relay_account: T::RelayChainAccountId,
 			proof: MultiSignature,
 		) -> DispatchResultWithPostInfo {
@@ -289,7 +289,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
-			new_reward_account: <T as frame_system::Config>::AccountId,
+			new_reward_account: T::AccountId,
 		) -> DispatchResultWithPostInfo {
 			let signer = ensure_signed(origin)?;
 
@@ -363,11 +363,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			rewards: Vec<(
-				T::RelayChainAccountId,
-				Option<<T as frame_system::Config>::AccountId>,
-				BalanceOf<T>,
-			)>,
+			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -468,7 +464,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// The account ID that holds the Crowdloan's funds
-		pub fn account_id() -> <T as frame_system::Config>::AccountId {
+		pub fn account_id() -> T::AccountId {
 			PALLET_ID.into_account()
 		}
 		/// The Account Id's balance
@@ -538,7 +534,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn accounts_payable)]
 	pub type AccountsPayable<T: Config> =
-		StorageMap<_, Blake2_128Concat, <T as frame_system::Config>::AccountId, RewardInfo<T>>;
+		StorageMap<_, Blake2_128Concat, T::AccountId, RewardInfo<T>>;
 	#[pallet::storage]
 	#[pallet::getter(fn claimed_relay_chain_ids)]
 	pub type ClaimedRelayChainIds<T: Config> =
@@ -576,32 +572,25 @@ pub mod pallet {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The initial payment of InitializationPayment % was paid
-		InitialPaymentMade(<T as frame_system::Config>::AccountId, BalanceOf<T>),
+		InitialPaymentMade(T::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(
-			T::RelayChainAccountId,
-			<T as frame_system::Config>::AccountId,
-			BalanceOf<T>,
-		),
+		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
-		RewardsPaid(<T as frame_system::Config>::AccountId, BalanceOf<T>),
+		RewardsPaid(T::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(
-			<T as frame_system::Config>::AccountId,
-			<T as frame_system::Config>::AccountId,
-		),
+		RewardAddressUpdated(T::AccountId, T::AccountId),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
-			Option<<T as frame_system::Config>::AccountId>,
+			Option<T::AccountId>,
 			BalanceOf<T>,
 		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAccountWithNotEnoughContribution(
 			T::RelayChainAccountId,
-			Option<<T as frame_system::Config>::AccountId>,
+			Option<T::AccountId>,
 			BalanceOf<T>,
 		),
 	}
