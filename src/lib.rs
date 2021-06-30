@@ -79,7 +79,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
+	use sp_runtime::traits::{AccountIdConversion, CheckedAdd, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec::Vec;
 
@@ -261,8 +261,7 @@ pub mod pallet {
 				// Pallet is configured with a zero vesting period.
 				info.total_reward - first_paid
 			} else {
-				(info.total_reward - first_paid)
-					.saturating_mul(payable_period.into())
+				(info.total_reward - first_paid).saturating_mul(payable_period.into())
 					/ period.into()
 			};
 
@@ -329,7 +328,11 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
-			rewards: Vec<(T::RelayChainAccountId, Option<<T as frame_system::Config>::AccountId>, BalanceOf<T>)>,
+			rewards: Vec<(
+				T::RelayChainAccountId,
+				Option<<T as frame_system::Config>::AccountId>,
+				BalanceOf<T>,
+			)>,
 			index: u32,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
@@ -346,22 +349,35 @@ pub mod pallet {
 			// Total number of contributors
 			let mut total_contributors = TotalContributors::<T>::get();
 
-			let incoming_rewards: BalanceOf<T> = rewards
+			let incoming_rewards: Option<BalanceOf<T>> = rewards
 				.iter()
-				.fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {
-					acc + *reward
+				.try_fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {
+					acc.checked_add(reward)
 				});
+
+			// This is where we need to ensure we do not overflow. All subsequent payments
+			// will be based on these checks.
+
+			// Ensure we do not overflow.
+			ensure!(incoming_rewards.is_some(), Error::<T>::AdditionOverflow);
+
+			let total_rewards = incoming_rewards
+				.unwrap()
+				.checked_add(&current_initialized_rewards);
+
+			// Ensure we do not overflow
+			ensure!(total_rewards.is_some(), Error::<T>::AdditionOverflow);
 
 			// Ensure we dont go over funds
 			ensure!(
-				current_initialized_rewards + incoming_rewards <= Self::pot(),
+				total_rewards.unwrap() <= Self::pot(),
 				Error::<T>::BatchBeyondFundPot
 			);
 
 			// Let's ensure we can close initialization
 			if index + rewards.len() as u32 == limit {
 				ensure!(
-					current_initialized_rewards + incoming_rewards == Self::pot(),
+					total_rewards.unwrap() == Self::pot(),
 					Error::<T>::RewardsDoNotMatchFund
 				);
 			}
@@ -451,6 +467,8 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided an already associated relay chain identity
 		AlreadyAssociated,
+		/// Addition overflow when initializating reward vec
+		AdditionOverflow,
 		/// Trying to introduce a batch that goes beyond the limits of the funds
 		BatchBeyondFundPot,
 		/// First claim already done
@@ -539,12 +557,19 @@ pub mod pallet {
 		InitialPaymentMade(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(T::RelayChainAccountId, <T as frame_system::Config>::AccountId, BalanceOf<T>),
+		NativeIdentityAssociated(
+			T::RelayChainAccountId,
+			<T as frame_system::Config>::AccountId,
+			BalanceOf<T>,
+		),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(<T as frame_system::Config>::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::AccountId),
+		RewardAddressUpdated(
+			<T as frame_system::Config>::AccountId,
+			<T as frame_system::Config>::AccountId,
+		),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,

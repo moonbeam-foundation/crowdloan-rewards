@@ -441,7 +441,7 @@ fn initialize_new_addresses_with_batch() {
 				0,
 				DispatchError::Module {
 					index: 2,
-					error: 8,
+					error: 9,
 					message: None,
 				},
 			),
@@ -600,5 +600,44 @@ fn reward_below_vesting_period_works() {
 			crate::Event::RewardsPaid(3, 3),
 		];
 		assert_eq!(events(), expected);
+	});
+}
+
+#[test]
+fn cannot_overflow_contributions_initializing() {
+	empty().execute_with(|| {
+		assert_noop!(
+			Crowdloan::initialize_reward_vec(
+				Origin::root(),
+				vec![
+					([1u8; 32].into(), Some(1), u128::MAX.into()),
+					([2u8; 32].into(), Some(2), u128::MAX.into()),
+				],
+				0,
+				2
+			),
+			Error::<Test>::AdditionOverflow
+		);
+	});
+}
+
+#[test]
+fn cannot_overflow_contributions_initializing_already_stored() {
+	empty().execute_with(|| {
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![([1u8; 32].into(), Some(1), 500u32.into())],
+			0,
+			2
+		));
+		assert_noop!(
+			Crowdloan::initialize_reward_vec(
+				Origin::root(),
+				vec![([2u8; 32].into(), Some(1), u128::MAX.into())],
+				1,
+				2
+			),
+			Error::<Test>::AdditionOverflow
+		);
 	});
 }
