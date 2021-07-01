@@ -23,6 +23,7 @@ use sp_runtime::MultiSignature;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
+use cumulus_primitives_core::relay_chain;
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -97,11 +98,17 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 
 /// Create a Contributor.
 fn create_contributors<T: Config>(
-	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
-	index: u32,
-	limit: u32,
+	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>
 ) -> Result<(), &'static str> {
-	Pallet::<T>::initialize_reward_vec(RawOrigin::Root.into(), contributors.clone(), index, limit)?;
+	Pallet::<T>::initialize_reward_vec(RawOrigin::Root.into(), contributors.clone())?;
+	Ok(())
+}
+
+/// Create a Contributor.
+fn close_initialization<T: Config>(
+	end_relay: relay_chain::BlockNumber
+) -> Result<(), &'static str> {
+	Pallet::<T>::complete_initialiation(RawOrigin::Root.into(), end_relay)?;
 	Ok(())
 }
 
@@ -149,7 +156,9 @@ benchmarks! {
 				whitelist_account!(user);
 			}
 		}
-		create_contributors::<T>(contribution_vec, 0, x+y)?;
+		create_contributors::<T>(contribution_vec)?;
+		close_initialization::<T>(10u32.into())?;
+
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
@@ -178,7 +187,7 @@ benchmarks! {
 
 		let verifier = create_funded_user::<T>("user", SEED, 0u32.into());
 
-	}:  _(RawOrigin::Root, contribution_vec, y, x+y)
+	}:  _(RawOrigin::Root, contribution_vec)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&verifier).is_some());
 		assert!(Pallet::<T>::initialized());
@@ -205,7 +214,8 @@ claim {
 				whitelist_account!(user);
 			}
 		}
-		create_contributors::<T>(contribution_vec.clone(), 0, contribution_vec.len() as u32)?;
+		create_contributors::<T>(contribution_vec.clone())?;
+		close_initialization::<T>(10u32.into())?;
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
@@ -252,7 +262,8 @@ claim {
 				whitelist_account!(user);
 			}
 		}
-		create_contributors::<T>(contribution_vec.clone(), 0, contribution_vec.len() as u32)?;
+		create_contributors::<T>(contribution_vec.clone())?;
+		close_initialization::<T>(10u32.into())?;
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
@@ -308,7 +319,8 @@ claim {
 
 		contribution_vec.push((relay_account.clone().into(), None, 100u32.into()));
 
-		create_contributors::<T>(contribution_vec.clone(), 0, contribution_vec.len() as u32)?;
+		create_contributors::<T>(contribution_vec.clone())?;
+		close_initialization::<T>(10u32.into())?;
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
