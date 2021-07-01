@@ -108,6 +108,8 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type MaxLocks = ();
 	type Balance = Balance;
 	type Event = Event;
@@ -118,7 +120,7 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const TestVestingPeriod: u32 = 8;
+	pub const TestMaxInitContributors: u32 = 8;
 	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
@@ -128,10 +130,10 @@ impl Config for Test {
 	type Event = Event;
 	type Initialized = TestInitialized;
 	type InitializationPayment = TestInitializationPayment;
+	type MaxInitContributors = TestMaxInitContributors;
 	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
-	type VestingPeriod = TestVestingPeriod;
 	type WeightInfo = ();
 }
 
@@ -180,7 +182,7 @@ pub(crate) fn events() -> Vec<super::Event<Test>> {
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let Event::pallet_crowdloan_rewards(inner) = e {
+			if let Event::Crowdloan(inner) = e {
 				Some(inner)
 			} else {
 				None
@@ -194,7 +196,7 @@ pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let Event::pallet_utility(inner) = e {
+			if let Event::Utility(inner) = e {
 				Some(inner)
 			} else {
 				None
