@@ -44,7 +44,7 @@ fn geneses() {
 				(pairs[2].public().into(), None, 500u32.into())
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -91,7 +91,7 @@ fn proving_assignation_works() {
 				(pairs[2].public().into(), None, 500u32.into())
 			],
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -158,7 +158,7 @@ fn paying_works_step_by_step() {
 				(pairs[2].public().into(), None, 500u32.into())
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -228,7 +228,7 @@ fn paying_works_after_unclaimed_period() {
 				(pairs[2].public().into(), None, 500u32.into())
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -291,7 +291,7 @@ fn paying_late_joiner_works() {
 				(pairs[2].public().into(), None, 500u32.into())
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -334,7 +334,7 @@ fn update_address_works() {
 				(pairs[2].public().into(), None, 500u32.into())
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -380,7 +380,7 @@ fn update_address_with_existing_address_works() {
 				(pairs[2].public().into(), None, 500u32.into())
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -427,7 +427,7 @@ fn initialize_new_addresses() {
 				(pairs[2].public().into(), None, 500u32.into())
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -444,7 +444,7 @@ fn initialize_new_addresses() {
 		);
 
 		assert_noop!(
-			Crowdloan::complete_initialiation(Origin::root(), init_block + VESTING * 2),
+			Crowdloan::complete_initialization(Origin::root(), init_block + VESTING * 2),
 			Error::<Test>::RewardVecAlreadyInitialized,
 		);
 	});
@@ -469,7 +469,7 @@ fn initialize_new_addresses_with_batch() {
 			)],))
 		]))
 		.dispatch(Origin::root()));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -525,7 +525,7 @@ fn floating_point_arithmetic_works() {
 			)]))
 		]))
 		.dispatch(Origin::root()));
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -602,7 +602,7 @@ fn reward_below_vesting_period_works() {
 		]))
 		.dispatch(Origin::root()));
 
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
@@ -710,7 +710,7 @@ fn test_initialization_errors() {
 		));
 
 		assert_noop!(
-			Crowdloan::complete_initialiation(Origin::root(), init_block + VESTING),
+			Crowdloan::complete_initialization(Origin::root(), init_block + VESTING),
 			Error::<Test>::RewardsDoNotMatchFund
 		);
 
@@ -722,7 +722,7 @@ fn test_initialization_errors() {
 
 		// Insert a non-valid vesting period
 		assert_noop!(
-			Crowdloan::complete_initialiation(Origin::root(), init_block),
+			Crowdloan::complete_initialization(Origin::root(), init_block),
 			Error::<Test>::VestingPeriodNonValid
 		);
 
@@ -732,14 +732,14 @@ fn test_initialization_errors() {
 			Error::<Test>::RewardVecNotFullyInitializedYet
 		);
 		// Complete
-		assert_ok!(Crowdloan::complete_initialiation(
+		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
 
 		// Cannot initialize again
 		assert_noop!(
-			Crowdloan::complete_initialiation(Origin::root(), init_block),
+			Crowdloan::complete_initialization(Origin::root(), init_block),
 			Error::<Test>::RewardVecAlreadyInitialized
 		);
 	});
