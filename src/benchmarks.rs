@@ -96,11 +96,40 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 	inherent_data
 }
 
-/// Create a Contributor.
+/// Create contributors.
 fn create_contributors<T: Config>(
+	total_number: u32,
+) -> Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> {
+	let mut contribution_vec = Vec::new();
+	for i in 0..total_number {
+		let seed = SEED - i;
+		let mut account: [u8; 32] = [0u8; 32];
+		let seed_as_slice = seed.to_be_bytes();
+		for j in 0..seed_as_slice.len() {
+			account[j] = seed_as_slice[j]
+		}
+		let relay_chain_account: AccountId32 = account.into();
+		let user = create_funded_user::<T>("user", seed, 0u32.into());
+		let contribution: BalanceOf<T> = 100u32.into();
+		contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
+	}
+	contribution_vec
+}
+
+/// Insert contributors.
+fn insert_contributors<T: Config>(
 	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 ) -> Result<(), &'static str> {
-	Pallet::<T>::initialize_reward_vec(RawOrigin::Root.into(), contributors.clone())?;
+	let mut sub_vec = Vec::new();
+	let batch = max_batch_contributors::<T>();
+
+	for i in 0..contributors.len() {
+		sub_vec.push(contributors[i].clone());
+		if i as u32 % batch == batch - 1 || i == contributors.len() - 1 {
+			Pallet::<T>::initialize_reward_vec(RawOrigin::Root.into(), sub_vec.clone())?;
+			sub_vec.clear()
+		}
+	}
 	Ok(())
 }
 
@@ -145,26 +174,8 @@ benchmarks! {
 		// Whats the worst case? the worst case is in which we have already N contributors
 		// Fund pallet account
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
-		let mut contribution_vec = Vec::new();
-		for i in 0..y{
-			let seed = SEED - i;
-			let mut account: [u8; 32] = [0u8; 32];
-			let seed_as_slice = seed.to_be_bytes();
-			for j in 0..seed_as_slice.len() {
-				account[j] = seed_as_slice[j]
-			}
-			let relay_chain_account: AccountId32 = account.into();
-			let user = create_funded_user::<T>("user", seed, 0u32.into());
-			let contribution: BalanceOf<T> = 100u32.into();
-			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
-			if i!=0 {
-				whitelist_account!(user);
-			}
-			if i % batch == batch-1 || i == y-1 {
-				create_contributors::<T>(contribution_vec.clone())?;
-				contribution_vec.clear()
-			}
-		}
+		let contributors = create_contributors::<T>(y);
+		insert_contributors::<T>(contributors)?;
 
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -175,26 +186,11 @@ benchmarks! {
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
-		let mut contribution_vec = Vec::new();
-		for i in 0..x{
-			let seed = SEED - i -y;
-			let mut account: [u8; 32] = [0u8; 32];
-			let seed_as_slice = seed.to_be_bytes();
-			for j in 0..seed_as_slice.len() {
-				account[j] = seed_as_slice[j]
-			}
-			let relay_chain_account: AccountId32 = account.into();
-			let user = create_funded_user::<T>("user", seed, 0u32.into());
-			let contribution: BalanceOf<T> = 100u32.into();
-			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
-			if i!=0 {
-				whitelist_account!(user);
-			}
-		}
+		let new_contributors = create_contributors::<T>(x);
 
 		let verifier = create_funded_user::<T>("user", SEED, 0u32.into());
 
-	}:  _(RawOrigin::Root, contribution_vec)
+	}:  _(RawOrigin::Root, new_contributors)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&verifier).is_some());
 	}
@@ -205,28 +201,8 @@ benchmarks! {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
-		let mut contribution_vec = Vec::new();
-		for i in 0..x{
-			let seed = SEED - i;
-			let mut account: [u8; 32] = [0u8; 32];
-			let seed_as_slice = seed.to_be_bytes();
-			for j in 0..seed_as_slice.len() {
-				account[j] = seed_as_slice[j]
-			}
-			let relay_chain_account: AccountId32 = account.into();
-			let user = create_funded_user::<T>("user", seed, 0u32.into());
-			let contribution: BalanceOf<T> = 100u32.into();
-			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
-			if i!=0 {
-
-				whitelist_account!(user);
-			}
-
-			if i % batch == batch-1 || i == x-1 {
-				create_contributors::<T>(contribution_vec.clone())?;
-				contribution_vec.clear()
-			}
-		}
+		let contributors = create_contributors::<T>(x);
+		insert_contributors::<T>(contributors)?;
 
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -259,28 +235,8 @@ claim {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
-		let mut contribution_vec = Vec::new();
-		for i in 0..x{
-			let seed = SEED - i;
-			let mut account: [u8; 32] = [0u8; 32];
-			let seed_as_slice = seed.to_be_bytes();
-			for j in 0..seed_as_slice.len() {
-				account[j] = seed_as_slice[j]
-			}
-			let relay_chain_account: AccountId32 = account.into();
-			let user = create_funded_user::<T>("user", seed, 0u32.into());
-			let contribution: BalanceOf<T> = 100u32.into();
-			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
-			if i!=0 {
-
-				whitelist_account!(user);
-			}
-
-			if i % batch == batch-1 || i == x-1 {
-				create_contributors::<T>(contribution_vec.clone())?;
-				contribution_vec.clear()
-			}
-		}
+		let contributors = create_contributors::<T>(x);
+		insert_contributors::<T>(contributors)?;
 
 		close_initialization::<T>(10u32.into())?;
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
@@ -314,26 +270,8 @@ claim {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
-		let mut contribution_vec = Vec::new();
-		for i in 0..x{
-			let seed = SEED - i;
-			let mut account: [u8; 32] = [0u8; 32];
-			let seed_as_slice = seed.to_be_bytes();
-			for j in 0..seed_as_slice.len() {
-				account[j] = seed_as_slice[j]
-			}
-			let relay_chain_account: AccountId32 = account.into();
-			let user = create_funded_user::<T>("user", seed, 0u32.into());
-			let contribution: BalanceOf<T> = 100u32.into();
-			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
-			if i!=0 {
-				whitelist_account!(user);
-			}
-			if i % batch == batch-1 || i == x-1 {
-				create_contributors::<T>(contribution_vec.clone())?;
-				contribution_vec.clear()
-			}
-		}
+		let contributors = create_contributors::<T>(x);
+		insert_contributors::<T>(contributors)?;
 
 		close_initialization::<T>(10u32.into())?;
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
@@ -368,33 +306,15 @@ claim {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
-		let mut contribution_vec = Vec::new();
-		for i in 1..x{
-			let seed = MAX_USERS - i;
-			let mut account: [u8; 32] = [0u8; 32];
-			let seed_as_slice = seed.to_be_bytes();
-			for j in 0..seed_as_slice.len() {
-				account[j] = seed_as_slice[j]
-			}
-			let relay_chain_account: AccountId32 = account.into();
-			let user = create_funded_user::<T>("user", seed, 0u32.into());
-			let contribution: BalanceOf<T> = 100u32.into();
-			contribution_vec.push((relay_chain_account.into(), None, contribution));
-			if i!=0 {
-				whitelist_account!(user);
-			}
-			if i % batch == batch-1 || i == x-1 {
-				create_contributors::<T>(contribution_vec.clone())?;
-				contribution_vec.clear();
-			}
+		let contributors = create_contributors::<T>(x-1);
+		insert_contributors::<T>(contributors)?;
 
-		}
-
-		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
+		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS-x-1, 100u32.into());
 		let (relay_account, signature) = crate_fake_sig::<T>(caller.clone());
 
-		contribution_vec.push((relay_account.clone().into(), None, 100u32.into()));
-		create_contributors::<T>(contribution_vec.clone())?;
+		let mut new_cont = Vec::new();
+		new_cont.push((relay_account.clone().into(), None, 100u32.into()));
+		insert_contributors::<T>(new_cont)?;
 		close_initialization::<T>(10u32.into())?;
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
