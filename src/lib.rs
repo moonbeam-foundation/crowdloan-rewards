@@ -335,7 +335,7 @@ pub mod pallet {
 		///  -The end relay block is higher than the init relay block
 		///  -The initialization has not complete yet
 		#[pallet::weight(0)]
-		pub fn complete_initialiation(
+		pub fn complete_initialization(
 			origin: OriginFor<T>,
 			lease_ending_block: relay_chain::BlockNumber,
 		) -> DispatchResultWithPostInfo {
