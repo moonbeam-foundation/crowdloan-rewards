@@ -8,7 +8,7 @@ use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use ed25519_dalek::Signer;
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelist_account};
+use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::dispatch::UnfilteredDispatchable;
 use frame_support::inherent::InherentData;
 use frame_support::inherent::ProvideInherent;
@@ -171,21 +171,17 @@ benchmarks! {
 		let y in 1..MAX_ALREADY_USERS;
 
 		let total_pot = 100u32*(x+y);
-		// Whats the worst case? the worst case is in which we have already N contributors
+		// We probably need to assume we have N contributors already in
 		// Fund pallet account
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
+
+		// Create y contributors
 		let contributors = create_contributors::<T>(y);
+
+		// Insert them
 		insert_contributors::<T>(contributors)?;
 
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
-		Pallet::<T>::on_finalize(T::BlockNumber::one());
-
+		// This X new contributors are the ones we will count
 		let new_contributors = create_contributors::<T>(x);
 
 		let verifier = create_funded_user::<T>("user", SEED, 0u32.into());
@@ -201,10 +197,13 @@ benchmarks! {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
+		// Create x contributors
 		let contributors = create_contributors::<T>(x);
+
+		// Insert them
 		insert_contributors::<T>(contributors)?;
 
-		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+		// We need to create the first block inherent, to initialize the initRelayBlock
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
@@ -213,16 +212,6 @@ benchmarks! {
 			.expect("dispatch succeeded");
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
-
-		RelayPallet::<T>::on_initialize(4u32.into());
-
-		let last_block_inherent = create_inherent_data::<T>(4u32);
-		RelayPallet::<T>::create_inherent(&last_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-
-		RelayPallet::<T>::on_finalize(4u32.into());
 
 	}:  _(RawOrigin::Root, 10u32)
 	verify {
@@ -235,11 +224,20 @@ claim {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
+
+		// Create x contributors
 		let contributors = create_contributors::<T>(x);
+
+		// Insert them
 		insert_contributors::<T>(contributors)?;
 
+		// Close initialization
 		close_initialization::<T>(10u32.into())?;
+
+		// The user that will make the call
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+
+		// First inherent
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
@@ -249,6 +247,7 @@ claim {
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
+		// Create 4th relay block, by now the user should have vested some amount
 		RelayPallet::<T>::on_initialize(4u32.into());
 
 		let last_block_inherent = create_inherent_data::<T>(4u32);
@@ -270,11 +269,20 @@ claim {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
+
+		// Create x contributors
 		let contributors = create_contributors::<T>(x);
+
+		// Insert them
 		insert_contributors::<T>(contributors)?;
 
+		// Close initialization
 		close_initialization::<T>(10u32.into())?;
+
+		// The user that will make the call
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+
+		// First inherent
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
@@ -284,15 +292,19 @@ claim {
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
-		RelayPallet::<T>::on_initialize(10u32.into());
 
-		let last_block_inherent = create_inherent_data::<T>(10u32);
+		// Let's advance the relay so that the vested  amount get transferrred
+
+		RelayPallet::<T>::on_initialize(4u32.into());
+		let last_block_inherent = create_inherent_data::<T>(4u32);
 		RelayPallet::<T>::create_inherent(&last_block_inherent)
 			.expect("got an inherent")
 			.dispatch_bypass_filter(RawOrigin::None.into())
 			.expect("dispatch succeeded");
 
-		RelayPallet::<T>::on_finalize(10u32.into());
+		RelayPallet::<T>::on_finalize(4u32.into());
+
+		// The new user
 		let new_user = create_funded_user::<T>("user", SEED+1, 0u32.into());
 
 	}:  _(RawOrigin::Signed(caller.clone()), new_user.clone())
@@ -306,16 +318,28 @@ claim {
 		// Fund pallet account
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
+
+		// Create x contributors
 		let contributors = create_contributors::<T>(x-1);
+
+		// Insert them
 		insert_contributors::<T>(contributors)?;
 
+		// The caller that will associate the account
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS-x-1, 100u32.into());
+
+		// Create a fake sig for such an account
 		let (relay_account, signature) = crate_fake_sig::<T>(caller.clone());
 
+		// Push this new contributor
 		let mut new_cont = Vec::new();
 		new_cont.push((relay_account.clone().into(), None, 100u32.into()));
 		insert_contributors::<T>(new_cont)?;
+
+		// Clonse initialization
 		close_initialization::<T>(10u32.into())?;
+
+		// First inherent
 		let first_block_inherent = create_inherent_data::<T>(1u32);
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		RelayPallet::<T>::create_inherent(&first_block_inherent)
@@ -325,16 +349,6 @@ claim {
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
-		RelayPallet::<T>::on_initialize(10u32.into());
-
-		let last_block_inherent = create_inherent_data::<T>(10u32);
-		RelayPallet::<T>::create_inherent(&last_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-
-		RelayPallet::<T>::on_finalize(10u32.into());
-		let new_user = create_funded_user::<T>("user", MAX_USERS+1, 0u32.into());
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
 	verify {
 		assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().total_reward, (100u32.into()));
