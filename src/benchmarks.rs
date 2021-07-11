@@ -2,6 +2,7 @@
 
 use crate::{BalanceOf, Call, Config, Pallet};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
+use cumulus_primitives_core::relay_chain;
 use cumulus_primitives_core::relay_chain::v1::HeadData;
 use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
 use cumulus_primitives_core::PersistedValidationData;
@@ -23,7 +24,6 @@ use sp_runtime::MultiSignature;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
-use cumulus_primitives_core::relay_chain;
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -98,7 +98,7 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 
 /// Create a Contributor.
 fn create_contributors<T: Config>(
-	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>
+	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 ) -> Result<(), &'static str> {
 	Pallet::<T>::initialize_reward_vec(RawOrigin::Root.into(), contributors.clone())?;
 	Ok(())
@@ -106,9 +106,9 @@ fn create_contributors<T: Config>(
 
 /// Create a Contributor.
 fn close_initialization<T: Config>(
-	end_relay: relay_chain::BlockNumber
+	end_relay: relay_chain::BlockNumber,
 ) -> Result<(), &'static str> {
-	Pallet::<T>::complete_initialiation(RawOrigin::Root.into(), end_relay)?;
+	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_relay)?;
 	Ok(())
 }
 
@@ -128,12 +128,17 @@ fn crate_fake_sig<T: Config>(signed_account: T::AccountId) -> (AccountId32, Mult
 	(account, signature.into())
 }
 
+fn max_batch_contributors<T: Config>() -> u32 {
+	<<T as Config>::MaxInitContributors as Get<u32>>::get()
+}
+
 const MAX_ALREADY_USERS: u32 = 500;
 const MAX_USERS: u32 = 500;
 const SEED: u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
-		let x in 1..MAX_USERS;
+		let batch = max_batch_contributors::<T>();
+		let x in 1..max_batch_contributors::<T>();
 		let y in 1..MAX_ALREADY_USERS;
 
 		let total_pot = 100u32*(x+y);
@@ -155,9 +160,11 @@ benchmarks! {
 			if i!=0 {
 				whitelist_account!(user);
 			}
+			if i % batch == batch-1 || i == y-1 {
+				create_contributors::<T>(contribution_vec.clone())?;
+				contribution_vec.clear()
+			}
 		}
-		create_contributors::<T>(contribution_vec)?;
-		close_initialization::<T>(10u32.into())?;
 
 		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -190,10 +197,10 @@ benchmarks! {
 	}:  _(RawOrigin::Root, contribution_vec)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&verifier).is_some());
-		assert!(Pallet::<T>::initialized());
 	}
 
-claim {
+	complete_initialization {
+		let batch = max_batch_contributors::<T>();
 		let x in 1..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -211,10 +218,70 @@ claim {
 			let contribution: BalanceOf<T> = 100u32.into();
 			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
 			if i!=0 {
+
 				whitelist_account!(user);
 			}
+
+			if i % batch == batch-1 || i == x-1 {
+				create_contributors::<T>(contribution_vec.clone())?;
+				contribution_vec.clear()
+			}
 		}
-		create_contributors::<T>(contribution_vec.clone())?;
+
+		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+		let first_block_inherent = create_inherent_data::<T>(1u32);
+		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
+		RelayPallet::<T>::create_inherent(&first_block_inherent)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(T::BlockNumber::one());
+
+		RelayPallet::<T>::on_initialize(4u32.into());
+
+		let last_block_inherent = create_inherent_data::<T>(4u32);
+		RelayPallet::<T>::create_inherent(&last_block_inherent)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+
+		RelayPallet::<T>::on_finalize(4u32.into());
+
+	}:  _(RawOrigin::Root, 10u32)
+	verify {
+	  assert!(Pallet::<T>::initialized());
+	}
+
+claim {
+		let batch = max_batch_contributors::<T>();
+		let x in 1..MAX_USERS;
+		// Fund pallet account
+		let total_pot = 100u32*x;
+		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
+		let mut contribution_vec = Vec::new();
+		for i in 0..x{
+			let seed = SEED - i;
+			let mut account: [u8; 32] = [0u8; 32];
+			let seed_as_slice = seed.to_be_bytes();
+			for j in 0..seed_as_slice.len() {
+				account[j] = seed_as_slice[j]
+			}
+			let relay_chain_account: AccountId32 = account.into();
+			let user = create_funded_user::<T>("user", seed, 0u32.into());
+			let contribution: BalanceOf<T> = 100u32.into();
+			contribution_vec.push((relay_chain_account.into(), Some(user.clone()), contribution));
+			if i!=0 {
+
+				whitelist_account!(user);
+			}
+
+			if i % batch == batch-1 || i == x-1 {
+				create_contributors::<T>(contribution_vec.clone())?;
+				contribution_vec.clear()
+			}
+		}
+
 		close_initialization::<T>(10u32.into())?;
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -242,6 +309,7 @@ claim {
 	}
 
 	update_reward_address {
+		let batch = max_batch_contributors::<T>();
 		let x in 3..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -261,8 +329,12 @@ claim {
 			if i!=0 {
 				whitelist_account!(user);
 			}
+			if i % batch == batch-1 || i == x-1 {
+				create_contributors::<T>(contribution_vec.clone())?;
+				contribution_vec.clear()
+			}
 		}
-		create_contributors::<T>(contribution_vec.clone())?;
+
 		close_initialization::<T>(10u32.into())?;
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -291,6 +363,7 @@ claim {
 	}
 
 	associate_native_identity {
+		let batch = max_batch_contributors::<T>();
 		let x in 2..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -310,15 +383,17 @@ claim {
 			if i!=0 {
 				whitelist_account!(user);
 			}
+			if i % batch == batch-1 || i == x-1 {
+				create_contributors::<T>(contribution_vec.clone())?;
+				contribution_vec.clear();
+			}
+
 		}
-
-
 
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS, 100u32.into());
 		let (relay_account, signature) = crate_fake_sig::<T>(caller.clone());
 
 		contribution_vec.push((relay_account.clone().into(), None, 100u32.into()));
-
 		create_contributors::<T>(contribution_vec.clone())?;
 		close_initialization::<T>(10u32.into())?;
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -364,6 +439,12 @@ mod tests {
 	fn bench_init_reward_vec() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_initialize_reward_vec::<Test>());
+		});
+	}
+	#[test]
+	fn complete_initialization() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(test_benchmark_complete_initialization::<Test>());
 		});
 	}
 	#[test]
