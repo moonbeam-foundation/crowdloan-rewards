@@ -334,7 +334,7 @@ pub mod pallet {
 		///  -The reward contribution money matches the crowdloan pot
 		///  -The end relay block is higher than the init relay block
 		///  -The initialization has not complete yet
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::complete_initialization(0))]
 		pub fn complete_initialization(
 			origin: OriginFor<T>,
 			lease_ending_block: relay_chain::BlockNumber,
@@ -372,7 +372,7 @@ pub mod pallet {
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
 		/// We check that the number of contributors inserted is less than T::MaxInitContributors::get()
-		#[pallet::weight(T::WeightInfo::initialize_reward_vec(0, rewards.len() as u32))]
+		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32, 0))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
 			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
