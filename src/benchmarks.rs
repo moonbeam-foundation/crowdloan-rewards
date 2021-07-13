@@ -173,7 +173,7 @@ const SEED: u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
 		let x in 1..max_batch_contributors::<T>();
-		let y in 1..MAX_ALREADY_USERS;
+		let y = 5977;
 
 		let total_pot = 100u32*(x+y);
 		// We probably need to assume we have N contributors already in
