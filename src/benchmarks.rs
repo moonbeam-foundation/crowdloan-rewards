@@ -99,10 +99,11 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 /// Create contributors.
 fn create_contributors<T: Config>(
 	total_number: u32,
+	seed_offset: u32,
 ) -> Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> {
 	let mut contribution_vec = Vec::new();
 	for i in 0..total_number {
-		let seed = SEED - i;
+		let seed = SEED - seed_offset - i;
 		let mut account: [u8; 32] = [0u8; 32];
 		let seed_as_slice = seed.to_be_bytes();
 		for j in 0..seed_as_slice.len() {
@@ -166,7 +167,6 @@ const MAX_USERS: u32 = 500;
 const SEED: u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
-		let batch = max_batch_contributors::<T>();
 		let x in 1..max_batch_contributors::<T>();
 		let y in 1..MAX_ALREADY_USERS;
 
@@ -176,13 +176,13 @@ benchmarks! {
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 
 		// Create y contributors
-		let contributors = create_contributors::<T>(y);
+		let contributors = create_contributors::<T>(y, 0);
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
 
 		// This X new contributors are the ones we will count
-		let new_contributors = create_contributors::<T>(x);
+		let new_contributors = create_contributors::<T>(x, y);
 
 		let verifier = create_funded_user::<T>("user", SEED, 0u32.into());
 
@@ -198,7 +198,7 @@ benchmarks! {
 		let total_pot = 100u32*x;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 		// Create x contributors
-		let contributors = create_contributors::<T>(x);
+		let contributors = create_contributors::<T>(x, 0);
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
@@ -226,7 +226,7 @@ claim {
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 
 		// Create x contributors
-		let contributors = create_contributors::<T>(x);
+		let contributors = create_contributors::<T>(x, 0);
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
@@ -271,7 +271,7 @@ claim {
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 
 		// Create x contributors
-		let contributors = create_contributors::<T>(x);
+		let contributors = create_contributors::<T>(x, 0);
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
@@ -320,7 +320,7 @@ claim {
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 
 		// Create x contributors
-		let contributors = create_contributors::<T>(x-1);
+		let contributors = create_contributors::<T>(x-1, 0);
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
