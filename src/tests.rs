@@ -451,6 +451,44 @@ fn update_address_with_existing_address_works() {
 }
 
 #[test]
+fn update_address_with_existing_with_multi_address_works() {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		// The init relay block gets inserted
+		roll_to(2);
+		let init_block = Crowdloan::init_relay_block();
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(1), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		roll_to(4);
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
+
+		// We make sure all rewards go to the new address
+		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
+		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
+		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().total_reward, 1000);
+
+		assert_noop!(
+			Crowdloan::claim(Origin::signed(1)),
+			Error::<Test>::NoAssociatedClaim
+		);
+	});
+}
+
+#[test]
 fn initialize_new_addresses() {
 	empty().execute_with(|| {
 		// The init relay block gets inserted
