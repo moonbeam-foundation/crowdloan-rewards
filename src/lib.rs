@@ -449,7 +449,20 @@ pub mod pallet {
 				total_contributors += 1;
 
 				if let Some(native_account) = native_account {
-					AccountsPayable::<T>::insert(native_account, reward_info);
+					if let Some(inserted_reward_info) = AccountsPayable::<T>::get(native_account) {
+						// the native account has already some rewards in, we add the new ones
+						AccountsPayable::<T>::insert(
+							native_account,
+							RewardInfo {
+								total_reward: inserted_reward_info.total_reward
+									+ reward_info.total_reward,
+								claimed_reward: inserted_reward_info.claimed_reward
+									+ reward_info.claimed_reward,
+							},
+						);
+					} else {
+						AccountsPayable::<T>::insert(native_account, reward_info);
+					}
 					ClaimedRelayChainIds::<T>::insert(relay_account, ());
 				} else {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
