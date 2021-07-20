@@ -519,7 +519,6 @@ pub mod pallet {
 		RewardVecAlreadyInitialized,
 		/// Reward vec has not yet been fully initialized
 		RewardVecNotFullyInitializedYet,
-
 		/// Initialize_reward_vec received too many contributors
 		TooManyContributors,
 		/// Provided vesting period is not valid
