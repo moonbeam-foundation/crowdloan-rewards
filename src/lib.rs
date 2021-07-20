@@ -460,9 +460,8 @@ pub mod pallet {
 						AccountsPayable::<T>::insert(
 							native_account,
 							RewardInfo {
-								total_reward: inserted_reward_info
-									.total_reward
-									.saturating_add(reward_info.total_reward),
+								total_reward: inserted_reward_info.total_reward
+									+ reward_info.total_reward,
 								claimed_reward: inserted_reward_info.claimed_reward
 									+ reward_info.claimed_reward,
 							},
