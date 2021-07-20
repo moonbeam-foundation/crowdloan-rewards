@@ -96,6 +96,8 @@ pub mod pallet {
 	pub trait Config: cumulus_pallet_parachain_system::Config + frame_system::Config {
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// This account will receive the Dust from the initialization process
+		type DustHandler: Get<Self::AccountId>;
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
 		/// Percentage to be payed at initialization
@@ -345,11 +347,15 @@ pub mod pallet {
 
 			let current_initialized_rewards = InitializedRewardAmount::<T>::get();
 
-			// This ensures that the rewards match the pot
-			ensure!(
-				current_initialized_rewards == Self::pot(),
-				Error::<T>::RewardsDoNotMatchFund
-			);
+			// Anything that does not match the pot should go to DustHandler
+			if Self::pot() > current_initialized_rewards {
+				T::RewardCurrency::transfer(
+					&PALLET_ID.into_account(),
+					&T::DustHandler::get(),
+					Self::pot().saturating_sub(current_initialized_rewards),
+					AllowDeath,
+				)?;
+			}
 
 			EndRelayBlock::<T>::put(lease_ending_block);
 
@@ -454,8 +460,9 @@ pub mod pallet {
 						AccountsPayable::<T>::insert(
 							native_account,
 							RewardInfo {
-								total_reward: inserted_reward_info.total_reward
-									+ reward_info.total_reward,
+								total_reward: inserted_reward_info
+									.total_reward
+									.saturating_add(reward_info.total_reward),
 								claimed_reward: inserted_reward_info.claimed_reward
 									+ reward_info.claimed_reward,
 							},
@@ -513,8 +520,7 @@ pub mod pallet {
 		RewardVecAlreadyInitialized,
 		/// Reward vec has not yet been fully initialized
 		RewardVecNotFullyInitializedYet,
-		/// Reward vec has already been initialized
-		RewardsDoNotMatchFund,
+
 		/// Initialize_reward_vec received too many contributors
 		TooManyContributors,
 		/// Provided vesting period is not valid
