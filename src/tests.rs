@@ -530,6 +530,33 @@ fn initialize_new_addresses() {
 }
 
 #[test]
+fn initialize_new_addresses_handle_dust() {
+	empty().execute_with(|| {
+		// The init relay block gets inserted
+		roll_to(2);
+		// Insert contributors
+		let pairs = get_ed25519_pairs(2);
+		let init_block = Crowdloan::init_relay_block();
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 999u32.into()),
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		assert_eq!(Crowdloan::initialized(), true);
+		assert_eq!(Balances::free_balance(10), 1);
+	});
+}
+
+#[test]
 fn initialize_new_addresses_not_matching_funds() {
 	empty().execute_with(|| {
 		// The init relay block gets inserted
@@ -546,13 +573,10 @@ fn initialize_new_addresses_not_matching_funds() {
 				(pairs[1].public().into(), None, 500u32.into()),
 			]
 		));
-		assert_ok!(Crowdloan::complete_initialization(
-			Origin::root(),
-			init_block + VESTING
-		));
-
-		assert_eq!(Crowdloan::initialized(), true);
-		assert_eq!(Balances::free_balance(10), 500);
+		assert_noop!(
+			Crowdloan::complete_initialization(Origin::root(), init_block + VESTING),
+			Error::<Test>::RewardsDoNotMatchFund
+		);
 	});
 }
 

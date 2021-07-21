@@ -347,6 +347,12 @@ pub mod pallet {
 
 			let current_initialized_rewards = InitializedRewardAmount::<T>::get();
 
+			// There can't be more than 1 unit (10^-18) dust per reward so
+			ensure!(
+				current_initialized_rewards > Self::pot() - TotalContributors::<T>::get().into(),
+				Error::<T>::RewardsDoNotMatchFund
+			);
+
 			// Anything that does not match the pot should go to DustHandler
 			if Self::pot() > current_initialized_rewards {
 				T::RewardCurrency::transfer(
@@ -519,6 +525,8 @@ pub mod pallet {
 		RewardVecAlreadyInitialized,
 		/// Reward vec has not yet been fully initialized
 		RewardVecNotFullyInitializedYet,
+		/// Rewards should match funds of the pallet
+		RewardsDoNotMatchFund,
 		/// Initialize_reward_vec received too many contributors
 		TooManyContributors,
 		/// Provided vesting period is not valid
