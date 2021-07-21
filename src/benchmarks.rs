@@ -24,7 +24,7 @@ use sp_runtime::MultiSignature;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
-use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
 	<<T as Config>::MinimumReward as Get<BalanceOf<T>>>::get()
@@ -54,6 +54,8 @@ fn create_funded_user<T: Config>(
 }
 
 // These creates a fake proof that emulates a storage proof inserted as the validation data
+// We avoid using the spoof builder here because it generates an issue when compiling without std
+// This proof however was generated with the spoof
 fn create_fake_valid_proof() -> (H256, StorageProof) {
 	let proof = StorageProof::new(vec![vec![
 		127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180,
@@ -70,10 +72,7 @@ fn create_fake_valid_proof() -> (H256, StorageProof) {
 }
 
 fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
-//	let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
-	let sproof_builder = RelayStateSproofBuilder::default();
-	let (relay_parent_storage_root, relay_chain_state) =
-		sproof_builder.into_state_root_and_proof();
+	let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
 	let vfp = PersistedValidationData {
 		relay_parent_number: block_number as RelayChainBlockNumber,
 		relay_parent_storage_root,
