@@ -564,13 +564,14 @@ fn initialize_new_addresses_not_matching_funds() {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(2);
 		let init_block = Crowdloan::init_relay_block();
+		// Total supply is 2500.Lets ensure inserting 2495 is not working.
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
 				([1u8; 32].into(), Some(1), 500u32.into()),
 				([2u8; 32].into(), Some(2), 500u32.into()),
 				(pairs[0].public().into(), None, 500u32.into()),
-				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 995u32.into()),
 			]
 		));
 		assert_noop!(
