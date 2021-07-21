@@ -141,6 +141,47 @@ fn proving_assignation_works() {
 }
 
 #[test]
+fn initializing_multi_relay_to_single_native_address_works() {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		// The init relay block gets inserted
+		roll_to(2);
+		let init_block = Crowdloan::init_relay_block();
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(1), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+		// 1 is payable
+		assert!(Crowdloan::accounts_payable(&1).is_some());
+		roll_to(4);
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 400);
+		assert_noop!(
+			Crowdloan::claim(Origin::signed(3)),
+			Error::<Test>::NoAssociatedClaim
+		);
+
+		let expected = vec![
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::InitialPaymentMade(1, 100),
+			crate::Event::RewardsPaid(1, 200),
+		];
+		assert_eq!(events(), expected);
+	});
+}
+
+#[test]
 fn paying_works_step_by_step() {
 	empty().execute_with(|| {
 		// Insert contributors
@@ -406,6 +447,44 @@ fn update_address_with_existing_address_works() {
 			crate::Event::RewardsPaid(2, 200),
 		];
 		assert_eq!(events(), expected);
+	});
+}
+
+#[test]
+fn update_address_with_existing_with_multi_address_works() {
+	empty().execute_with(|| {
+		// Insert contributors
+		let pairs = get_ed25519_pairs(3);
+		// The init relay block gets inserted
+		roll_to(2);
+		let init_block = Crowdloan::init_relay_block();
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(1), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 500u32.into()),
+				(pairs[2].public().into(), None, 500u32.into())
+			]
+		));
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		roll_to(4);
+		assert_ok!(Crowdloan::claim(Origin::signed(1)));
+
+		// We make sure all rewards go to the new address
+		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
+		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
+		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().total_reward, 1000);
+
+		assert_noop!(
+			Crowdloan::claim(Origin::signed(1)),
+			Error::<Test>::NoAssociatedClaim
+		);
 	});
 }
 
