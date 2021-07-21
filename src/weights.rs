@@ -40,26 +40,28 @@
 // --output
 // /tmp/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use frame_support::{
+	traits::Get,
+	weights::{constants::RocksDbWeight, Weight},
+};
 use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_crowdloan_rewards.
 pub trait WeightInfo {
-	fn initialize_reward_vec(x: u32, y: u32, ) -> Weight;
-	fn complete_initialization(x: u32, ) -> Weight;
-	fn claim(x: u32, ) -> Weight;
-	fn update_reward_address(x: u32, ) -> Weight;
-	fn associate_native_identity(x: u32, ) -> Weight;
+	fn initialize_reward_vec(x: u32, y: u32) -> Weight;
+	fn complete_initialization(x: u32) -> Weight;
+	fn claim(x: u32) -> Weight;
+	fn update_reward_address(x: u32) -> Weight;
+	fn associate_native_identity(x: u32) -> Weight;
 }
 
 /// Weights for pallet_crowdloan_rewards using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn initialize_reward_vec(x: u32, y: u32, ) -> Weight {
+	fn initialize_reward_vec(x: u32, y: u32) -> Weight {
 		(0 as Weight)
 			// Standard Error: 13_000
 			.saturating_add((65_265_000 as Weight).saturating_mul(x as Weight))
@@ -70,22 +72,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(x as Weight)))
 	}
-	fn complete_initialization(_x: u32, ) -> Weight {
+	fn complete_initialization(_x: u32) -> Weight {
 		(41_642_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn claim(_x: u32, ) -> Weight {
+	fn claim(_x: u32) -> Weight {
 		(100_401_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
-	fn update_reward_address(_x: u32, ) -> Weight {
+	fn update_reward_address(_x: u32) -> Weight {
 		(57_142_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
-	fn associate_native_identity(_x: u32, ) -> Weight {
+	fn associate_native_identity(_x: u32) -> Weight {
 		(152_912_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
@@ -94,7 +96,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn initialize_reward_vec(x: u32, y: u32, ) -> Weight {
+	fn initialize_reward_vec(x: u32, y: u32) -> Weight {
 		(0 as Weight)
 			// Standard Error: 13_000
 			.saturating_add((65_265_000 as Weight).saturating_mul(x as Weight))
@@ -105,22 +107,22 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 			.saturating_add(RocksDbWeight::get().writes((3 as Weight).saturating_mul(x as Weight)))
 	}
-	fn complete_initialization(_x: u32, ) -> Weight {
+	fn complete_initialization(_x: u32) -> Weight {
 		(41_642_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
-	fn claim(_x: u32, ) -> Weight {
+	fn claim(_x: u32) -> Weight {
 		(100_401_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 	}
-	fn update_reward_address(_x: u32, ) -> Weight {
+	fn update_reward_address(_x: u32) -> Weight {
 		(57_142_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
-	fn associate_native_identity(_x: u32, ) -> Weight {
+	fn associate_native_identity(_x: u32) -> Weight {
 		(152_912_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))

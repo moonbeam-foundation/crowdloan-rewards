@@ -24,7 +24,7 @@ use sp_runtime::MultiSignature;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
-
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
 	<<T as Config>::MinimumReward as Get<BalanceOf<T>>>::get()
@@ -53,6 +53,7 @@ fn create_funded_user<T: Config>(
 	user
 }
 
+// These creates a fake proof that emulates a storage proof inserted as the validation data
 fn create_fake_valid_proof() -> (H256, StorageProof) {
 	let proof = StorageProof::new(vec![vec![
 		127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180,
@@ -69,8 +70,10 @@ fn create_fake_valid_proof() -> (H256, StorageProof) {
 }
 
 fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
-	let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
-
+//	let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
+	let sproof_builder = RelayStateSproofBuilder::default();
+	let (relay_parent_storage_root, relay_chain_state) =
+		sproof_builder.into_state_root_and_proof();
 	let vfp = PersistedValidationData {
 		relay_parent_number: block_number as RelayChainBlockNumber,
 		relay_parent_storage_root,
@@ -142,7 +145,7 @@ fn close_initialization<T: Config>(
 	Ok(())
 }
 
-fn crate_fake_sig<T: Config>(signed_account: T::AccountId) -> (AccountId32, MultiSignature) {
+fn create_fake_sig<T: Config>(signed_account: T::AccountId) -> (AccountId32, MultiSignature) {
 	let seed: [u8; 32] = [
 		47, 140, 97, 41, 216, 22, 207, 81, 195, 116, 188, 127, 8, 195, 230, 62, 209, 86, 207, 120,
 		174, 251, 74, 101, 80, 217, 123, 135, 153, 121, 119, 238,
@@ -162,7 +165,7 @@ fn max_batch_contributors<T: Config>() -> u32 {
 	<<T as Config>::MaxInitContributors as Get<u32>>::get()
 }
 
-const MAX_ALREADY_USERS: u32 = 500;
+const MAX_ALREADY_USERS: u32 = 5799;
 const MAX_USERS: u32 = 500;
 const SEED: u32 = 999999999;
 benchmarks! {
@@ -293,7 +296,7 @@ claim {
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 
-		// Let's advance the relay so that the vested  amount get transferrred
+		// Let's advance the relay so that the vested  amount get transferred
 
 		RelayPallet::<T>::on_initialize(4u32.into());
 		let last_block_inherent = create_inherent_data::<T>(4u32);
@@ -329,7 +332,7 @@ claim {
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS-x-1, 100u32.into());
 
 		// Create a fake sig for such an account
-		let (relay_account, signature) = crate_fake_sig::<T>(caller.clone());
+		let (relay_account, signature) = create_fake_sig::<T>(caller.clone());
 
 		// Push this new contributor
 		let mut new_cont = Vec::new();
@@ -376,7 +379,7 @@ mod tests {
 		});
 	}
 	#[test]
-	fn complete_initialization() {
+	fn bench_complete_initialization() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_complete_initialization::<Test>());
 		});
@@ -388,13 +391,13 @@ mod tests {
 		});
 	}
 	#[test]
-	fn update_reward_address() {
+	fn bench_update_reward_address() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_update_reward_address::<Test>());
 		});
 	}
 	#[test]
-	fn associate_native_identity() {
+	fn bench_associate_native_identity() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(test_benchmark_associate_native_identity::<Test>());
 		});
