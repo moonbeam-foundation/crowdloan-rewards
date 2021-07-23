@@ -347,14 +347,16 @@ pub mod pallet {
 
 			let current_initialized_rewards = InitializedRewardAmount::<T>::get();
 
+			let current_pot = Self::pot();
+
 			// There can't be more than 1 unit (10^-18) dust per reward so
 			ensure!(
-				current_initialized_rewards > Self::pot() - TotalContributors::<T>::get().into(),
+				current_initialized_rewards > current_pot - TotalContributors::<T>::get().into(),
 				Error::<T>::RewardsDoNotMatchFund
 			);
 
 			// Anything that does not match the pot should go to DustHandler
-			if Self::pot() > current_initialized_rewards {
+			if current_pot > current_initialized_rewards {
 				T::RewardCurrency::transfer(
 					&PALLET_ID.into_account(),
 					&T::DustHandler::get(),
