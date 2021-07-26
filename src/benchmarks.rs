@@ -221,7 +221,7 @@ benchmarks! {
 	  assert!(Pallet::<T>::initialized());
 	}
 
-claim {
+	claim {
 		let batch = max_batch_contributors::<T>();
 		let x in 1..MAX_USERS;
 		// Fund pallet account
