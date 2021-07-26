@@ -164,13 +164,14 @@ fn max_batch_contributors<T: Config>() -> u32 {
 	<<T as Config>::MaxInitContributors as Get<u32>>::get()
 }
 
+// This is our current number of contributors
 const MAX_ALREADY_USERS: u32 = 5799;
 const MAX_USERS: u32 = 500;
 const SEED: u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
 		let x in 1..max_batch_contributors::<T>();
-		let y in 1..MAX_ALREADY_USERS;
+		let y = MAX_ALREADY_USERS;
 
 		let total_pot = 100u32*(x+y);
 		// We probably need to assume we have N contributors already in

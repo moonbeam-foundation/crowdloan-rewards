@@ -169,7 +169,7 @@ pub mod pallet {
 		/// contribution
 		/// Weight argument is 0 since it depends on how the storage trie is composed
 		/// Once we have the number of contributors, we can probably add such a weight here
-		#[pallet::weight(T::WeightInfo::associate_native_identity(0))]
+		#[pallet::weight(T::WeightInfo::associate_native_identity())]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
 			reward_account: T::AccountId,
@@ -237,7 +237,7 @@ pub mod pallet {
 		}
 
 		/// Collect whatever portion of your reward are currently vested.
-		#[pallet::weight(T::WeightInfo::claim(0))]
+		#[pallet::weight(T::WeightInfo::claim())]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -298,7 +298,7 @@ pub mod pallet {
 		/// Update reward address. To determine whether its something we want to keep
 		/// Weight argument is 0 since it depends on how the storage trie is composed
 		/// Once we have the number of contributors, we can probably add such a weight here
-		#[pallet::weight(T::WeightInfo::update_reward_address(0))]
+		#[pallet::weight(T::WeightInfo::update_reward_address())]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
 			new_reward_account: T::AccountId,
@@ -334,7 +334,7 @@ pub mod pallet {
 		///  -The reward contribution money matches the crowdloan pot
 		///  -The end relay block is higher than the init relay block
 		///  -The initialization has not complete yet
-		#[pallet::weight(T::WeightInfo::complete_initialization(0))]
+		#[pallet::weight(T::WeightInfo::complete_initialization())]
 		pub fn complete_initialization(
 			origin: OriginFor<T>,
 			lease_ending_block: relay_chain::BlockNumber,
@@ -372,7 +372,7 @@ pub mod pallet {
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
 		/// We check that the number of contributors inserted is less than T::MaxInitContributors::get()
-		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32, 0))]
+		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
 			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
