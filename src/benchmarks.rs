@@ -170,7 +170,7 @@ const SEED: u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
 		let x in 1..max_batch_contributors::<T>();
-		let y in 1..MAX_ALREADY_USERS;
+		let y = MAX_ALREADY_USERS;
 
 		let total_pot = 100u32*(x+y);
 		// We probably need to assume we have N contributors already in
@@ -194,7 +194,6 @@ benchmarks! {
 	}
 
 	complete_initialization {
-		let batch = max_batch_contributors::<T>();
 		let x in 1..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -221,7 +220,6 @@ benchmarks! {
 	}
 
 claim {
-		let batch = max_batch_contributors::<T>();
 		let x in 1..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -266,7 +264,6 @@ claim {
 	}
 
 	update_reward_address {
-		let batch = max_batch_contributors::<T>();
 		let x in 3..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
@@ -315,7 +312,6 @@ claim {
 	}
 
 	associate_native_identity {
-		let batch = max_batch_contributors::<T>();
 		let x in 2..MAX_USERS;
 		// Fund pallet account
 		let total_pot = 100u32*x;
