@@ -71,7 +71,6 @@ mod tests;
 pub mod pallet {
 
 	use cumulus_primitives_core::relay_chain;
-	use frame_support::traits::ExistenceRequirement::KeepAlive;
 	use frame_support::traits::WithdrawReasons;
 	use frame_support::{
 		dispatch::fmt::Debug,
@@ -125,10 +124,6 @@ pub mod pallet {
 	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
-
-	pub type NegativeImbalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::NegativeImbalance;
 
 	/// Stores info about the rewards owed as well as how much has been vested so far.
 	/// For a primer on this kind of design, see the recipe on compounding interest
@@ -366,7 +361,7 @@ pub mod pallet {
 					&PALLET_ID.into_account(),
 					to_burn,
 					WithdrawReasons::TRANSFER,
-					KeepAlive,
+					AllowDeath,
 				)
 				.map_err(|_| Error::<T>::ErrorBurningImbalance)?;
 			}
