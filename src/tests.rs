@@ -546,13 +546,20 @@ fn initialize_new_addresses_handle_dust() {
 				(pairs[1].public().into(), None, 999u32.into()),
 			]
 		));
+
+		let crowdloan_pot = Crowdloan::pot();
+		let previous_issuance = Balances::total_issuance();
 		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
 			init_block + VESTING
 		));
 
+		// We have burnt 1 unit
+		assert!(Crowdloan::pot() == crowdloan_pot - 1);
+		assert!(Balances::total_issuance() == previous_issuance - 1);
+
 		assert_eq!(Crowdloan::initialized(), true);
-		assert_eq!(Balances::free_balance(10), 1);
+		assert_eq!(Balances::free_balance(10), 0);
 	});
 }
 
@@ -622,7 +629,7 @@ fn initialize_new_addresses_with_batch() {
 				0,
 				DispatchError::Module {
 					index: 2,
-					error: 8,
+					error: 9,
 					message: None,
 				},
 			),

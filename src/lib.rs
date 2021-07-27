@@ -71,6 +71,8 @@ mod tests;
 pub mod pallet {
 
 	use cumulus_primitives_core::relay_chain;
+	use frame_support::traits::ExistenceRequirement::KeepAlive;
+	use frame_support::traits::WithdrawReasons;
 	use frame_support::{
 		dispatch::fmt::Debug,
 		pallet_prelude::*,
@@ -96,8 +98,6 @@ pub mod pallet {
 	pub trait Config: cumulus_pallet_parachain_system::Config + frame_system::Config {
 		/// The overarching event type
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-		/// This account will receive the Dust from the initialization process
-		type DustHandler: Get<Self::AccountId>;
 		/// Checker for the reward vec, is it initalized already?
 		type Initialized: Get<bool>;
 		/// Percentage to be payed at initialization
@@ -125,6 +125,10 @@ pub mod pallet {
 	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
+
+	pub type NegativeImbalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::NegativeImbalance;
 
 	/// Stores info about the rewards owed as well as how much has been vested so far.
 	/// For a primer on this kind of design, see the recipe on compounding interest
@@ -347,22 +351,24 @@ pub mod pallet {
 
 			let current_initialized_rewards = InitializedRewardAmount::<T>::get();
 
-			let current_pot = Self::pot();
+			let reward_difference = Self::pot().saturating_sub(current_initialized_rewards);
 
-			// There can't be more than 1 unit (10^-18) dust per reward so
 			ensure!(
-				current_initialized_rewards > current_pot - TotalContributors::<T>::get().into(),
+				reward_difference < TotalContributors::<T>::get().into(),
 				Error::<T>::RewardsDoNotMatchFund
 			);
 
-			// Anything that does not match the pot should go to DustHandler
-			if current_pot > current_initialized_rewards {
-				T::RewardCurrency::transfer(
+			if reward_difference > 0u32.into() {
+				let to_burn = T::RewardCurrency::burn(reward_difference);
+
+				// Shouldnt fail, as the fund should be enough to burn and nothing is locked
+				T::RewardCurrency::settle(
 					&PALLET_ID.into_account(),
-					&T::DustHandler::get(),
-					Self::pot().saturating_sub(current_initialized_rewards),
-					AllowDeath,
-				)?;
+					to_burn,
+					WithdrawReasons::TRANSFER,
+					KeepAlive,
+				)
+				.map_err(|_| Error::<T>::ErrorBurningImbalance)?;
 			}
 
 			EndRelayBlock::<T>::put(lease_ending_block);
@@ -507,6 +513,8 @@ pub mod pallet {
 		AlreadyAssociated,
 		/// Trying to introduce a batch that goes beyond the limits of the funds
 		BatchBeyondFundPot,
+		// Fail while burning imbalance
+		ErrorBurningImbalance,
 		/// First claim already done
 		FirstClaimAlreadyDone,
 		/// The contribution is not high enough to be eligible for rewards

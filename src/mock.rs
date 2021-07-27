@@ -135,7 +135,6 @@ impl Config for Test {
 	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
-	type DustHandler = TestDustHandler;
 }
 
 impl pallet_utility::Config for Test {
