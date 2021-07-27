@@ -348,6 +348,7 @@ pub mod pallet {
 
 			let reward_difference = Self::pot().saturating_sub(current_initialized_rewards);
 
+			// Ensure the difference is not bigger than the total number of contributors
 			ensure!(
 				reward_difference < TotalContributors::<T>::get().into(),
 				Error::<T>::RewardsDoNotMatchFund
