@@ -124,7 +124,6 @@ parameter_types! {
 	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
-	pub const TestDustHandler: u64 = 10u64;
 }
 
 impl Config for Test {
