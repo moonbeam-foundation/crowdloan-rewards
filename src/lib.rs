@@ -354,18 +354,15 @@ pub mod pallet {
 				Error::<T>::RewardsDoNotMatchFund
 			);
 
-			if reward_difference > 0u32.into() {
-				let to_burn = T::RewardCurrency::burn(reward_difference);
-
-				// Shouldnt fail, as the fund should be enough to burn and nothing is locked
-				T::RewardCurrency::settle(
-					&PALLET_ID.into_account(),
-					to_burn,
-					WithdrawReasons::TRANSFER,
-					AllowDeath,
-				)
-				.map_err(|_| Error::<T>::ErrorBurningImbalance)?;
-			}
+			// Burn the difference
+			let imbalance = T::RewardCurrency::withdraw(
+				&PALLET_ID.into_account(),
+				reward_difference,
+				WithdrawReasons::TRANSFER,
+				AllowDeath,
+			)
+			.expect("Shouldnt fail, as the fund should be enough to burn and nothing is locked");
+			drop(imbalance);
 
 			EndRelayBlock::<T>::put(lease_ending_block);
 
@@ -509,8 +506,6 @@ pub mod pallet {
 		AlreadyAssociated,
 		/// Trying to introduce a batch that goes beyond the limits of the funds
 		BatchBeyondFundPot,
-		// Fail while burning imbalance
-		ErrorBurningImbalance,
 		/// First claim already done
 		FirstClaimAlreadyDone,
 		/// The contribution is not high enough to be eligible for rewards

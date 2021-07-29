@@ -629,7 +629,7 @@ fn initialize_new_addresses_with_batch() {
 				0,
 				DispatchError::Module {
 					index: 2,
-					error: 9,
+					error: 8,
 					message: None,
 				},
 			),
