@@ -530,6 +530,65 @@ fn initialize_new_addresses() {
 }
 
 #[test]
+fn initialize_new_addresses_handle_dust() {
+	empty().execute_with(|| {
+		// The init relay block gets inserted
+		roll_to(2);
+		// Insert contributors
+		let pairs = get_ed25519_pairs(2);
+		let init_block = Crowdloan::init_relay_block();
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 999u32.into()),
+			]
+		));
+
+		let crowdloan_pot = Crowdloan::pot();
+		let previous_issuance = Balances::total_issuance();
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		// We have burnt 1 unit
+		assert!(Crowdloan::pot() == crowdloan_pot - 1);
+		assert!(Balances::total_issuance() == previous_issuance - 1);
+
+		assert_eq!(Crowdloan::initialized(), true);
+		assert_eq!(Balances::free_balance(10), 0);
+	});
+}
+
+#[test]
+fn initialize_new_addresses_not_matching_funds() {
+	empty().execute_with(|| {
+		// The init relay block gets inserted
+		roll_to(2);
+		// Insert contributors
+		let pairs = get_ed25519_pairs(2);
+		let init_block = Crowdloan::init_relay_block();
+		// Total supply is 2500.Lets ensure inserting 2495 is not working.
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 500u32.into()),
+				([2u8; 32].into(), Some(2), 500u32.into()),
+				(pairs[0].public().into(), None, 500u32.into()),
+				(pairs[1].public().into(), None, 995u32.into()),
+			]
+		));
+		assert_noop!(
+			Crowdloan::complete_initialization(Origin::root(), init_block + VESTING),
+			Error::<Test>::RewardsDoNotMatchFund
+		);
+	});
+}
+
+#[test]
 fn initialize_new_addresses_with_batch() {
 	empty().execute_with(|| {
 		// This time should succeed trully
@@ -787,11 +846,6 @@ fn test_initialization_errors() {
 			Origin::root(),
 			vec![([1u8; 32].into(), Some(1), pot - 1)]
 		));
-
-		assert_noop!(
-			Crowdloan::complete_initialization(Origin::root(), init_block + VESTING),
-			Error::<Test>::RewardsDoNotMatchFund
-		);
 
 		// Fill rewards
 		assert_ok!(Crowdloan::initialize_reward_vec(
