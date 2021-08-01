@@ -75,6 +75,7 @@ pub mod pallet {
 
 	use crate::weights::WeightInfo;
 	use cumulus_primitives_core::relay_chain;
+	use frame_support::traits::WithdrawReasons;
 	use frame_support::{
 		dispatch::fmt::Debug,
 		pallet_prelude::*,
@@ -357,11 +358,23 @@ pub mod pallet {
 
 			let current_initialized_rewards = InitializedRewardAmount::<T>::get();
 
-			// This ensures that the rewards match the pot
+			let reward_difference = Self::pot().saturating_sub(current_initialized_rewards);
+
+			// Ensure the difference is not bigger than the total number of contributors
 			ensure!(
-				current_initialized_rewards == Self::pot(),
+				reward_difference < TotalContributors::<T>::get().into(),
 				Error::<T>::RewardsDoNotMatchFund
 			);
+
+			// Burn the difference
+			let imbalance = T::RewardCurrency::withdraw(
+				&PALLET_ID.into_account(),
+				reward_difference,
+				WithdrawReasons::TRANSFER,
+				AllowDeath,
+			)
+			.expect("Shouldnt fail, as the fund should be enough to burn and nothing is locked");
+			drop(imbalance);
 
 			EndRelayBlock::<T>::put(lease_ending_block);
 
@@ -525,7 +538,7 @@ pub mod pallet {
 		RewardVecAlreadyInitialized,
 		/// Reward vec has not yet been fully initialized
 		RewardVecNotFullyInitializedYet,
-		/// Reward vec has already been initialized
+		/// Rewards should match funds of the pallet
 		RewardsDoNotMatchFund,
 		/// Initialize_reward_vec received too many contributors
 		TooManyContributors,
