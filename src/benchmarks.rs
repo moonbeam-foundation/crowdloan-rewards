@@ -265,7 +265,7 @@ benchmarks! {
 		// The user that will make the call
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 
-		// We verified there is no dependency of the number of contributors already inserted in claim
+		// We verified there is no dependency of the number of contributors already inserted in update_reward_address
 		// Create 1 contributor
 		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
 			vec![(AccountId32::from([1u8;32]).into(), Some(caller.clone()), total_pot.into())];
@@ -317,7 +317,7 @@ benchmarks! {
 		// Create a fake sig for such an account
 		let (relay_account, signature) = create_sig::<T>(caller.clone());
 
-		// We verified there is no dependency of the number of contributors already inserted in claim
+		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity
 		// Create 1 contributor
 		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
 		vec![(relay_account.clone().into(), None, total_pot.into())];
