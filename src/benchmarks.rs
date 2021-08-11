@@ -213,23 +213,23 @@ benchmarks! {
 	}
 
 	claim {
-		let batch = max_batch_contributors::<T>();
-		let x in 1..MAX_USERS;
 		// Fund pallet account
-		let total_pot = 100u32*x;
+		let total_pot = 100u32;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 
-		// Create x contributors
-		let contributors = create_contributors::<T>(x, 0);
+		// The user that will make the call
+		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+
+		// We verified there is no dependency of the number of contributors already inserted in claim
+		// Create 1 contributor
+		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
+			vec![(AccountId32::from([1u8;32]).into(), Some(caller.clone()), total_pot.into())];
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
 
 		// Close initialization
 		close_initialization::<T>(10u32.into())?;
-
-		// The user that will make the call
-		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 
 		// First inherent
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -258,23 +258,23 @@ benchmarks! {
 	}
 
 	update_reward_address {
-		let batch = max_batch_contributors::<T>();
-		let x in 3..MAX_USERS;
 		// Fund pallet account
-		let total_pot = 100u32*x;
+		let total_pot = 100u32;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 
-		// Create x contributors
-		let contributors = create_contributors::<T>(x, 0);
+		// The user that will make the call
+		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+
+		// We verified there is no dependency of the number of contributors already inserted in claim
+		// Create 1 contributor
+		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
+			vec![(AccountId32::from([1u8;32]).into(), Some(caller.clone()), total_pot.into())];
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
 
 		// Close initialization
 		close_initialization::<T>(10u32.into())?;
-
-		// The user that will make the call
-		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 
 		// First inherent
 		let first_block_inherent = create_inherent_data::<T>(1u32);
@@ -307,28 +307,23 @@ benchmarks! {
 	}
 
 	associate_native_identity {
-		let batch = max_batch_contributors::<T>();
-		let x in 2..MAX_USERS;
 		// Fund pallet account
-		let total_pot = 100u32*x;
+		let total_pot = 100u32;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
 
-		// Create x contributors
-		let contributors = create_contributors::<T>(x-1, 0);
-
-		// Insert them
-		insert_contributors::<T>(contributors)?;
-
 		// The caller that will associate the account
-		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS-x-1, 100u32.into());
+		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 
 		// Create a fake sig for such an account
 		let (relay_account, signature) = create_sig::<T>(caller.clone());
 
-		// Push this new contributor
-		let mut new_cont = Vec::new();
-		new_cont.push((relay_account.clone().into(), None, 100u32.into()));
-		insert_contributors::<T>(new_cont)?;
+		// We verified there is no dependency of the number of contributors already inserted in claim
+		// Create 1 contributor
+		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
+		vec![(relay_account.clone().into(), None, total_pot.into())];
+
+		// Insert them
+		insert_contributors::<T>(contributors)?;
 
 		// Clonse initialization
 		close_initialization::<T>(10u32.into())?;
