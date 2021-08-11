@@ -157,7 +157,6 @@ fn max_batch_contributors<T: Config>() -> u32 {
 
 // This is our current number of contributors
 const MAX_ALREADY_USERS: u32 = 5799;
-const MAX_USERS: u32 = 500;
 const SEED: u32 = 999999999;
 benchmarks! {
 	initialize_reward_vec {
@@ -186,13 +185,11 @@ benchmarks! {
 	}
 
 	complete_initialization {
-		let batch = max_batch_contributors::<T>();
-		let x in 1..MAX_USERS;
 		// Fund pallet account
-		let total_pot = 100u32*x;
+		let total_pot = 100u32;
 		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
-		// Create x contributors
-		let contributors = create_contributors::<T>(x, 0);
+		// 1 contributor is enough
+		let contributors = create_contributors::<T>(1, 0);
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
@@ -317,7 +314,7 @@ benchmarks! {
 		// Create a fake sig for such an account
 		let (relay_account, signature) = create_sig::<T>(caller.clone());
 
-		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity
+		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity	
 		// Create 1 contributor
 		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
 		vec![(relay_account.clone().into(), None, total_pot.into())];
