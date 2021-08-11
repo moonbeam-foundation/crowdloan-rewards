@@ -1,4 +1,6 @@
+
 #![cfg(feature = "runtime-benchmarks")]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 use crate::{BalanceOf, Call, Config, Pallet};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
@@ -8,6 +10,7 @@ use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use ed25519_dalek::Signer;
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::dispatch::UnfilteredDispatchable;
 use frame_support::inherent::InherentData;
