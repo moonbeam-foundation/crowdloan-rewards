@@ -19,10 +19,10 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = fa
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false, optional = true }
-cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
-nimbus-primitives = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
-cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
-cumulus-primitives-parachain-inherent = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
+cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "add_to_std_polkadot_primitives" }
+nimbus-primitives = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "add_to_std_polkadot_primitives" }
+cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "add_to_std_polkadot_primitives" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "add_to_std_polkadot_primitives" }
 ed25519-dalek = { version = "1.0.1", default-features = false, features = ["u64_backend", "alloc"], optional = true }
 sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.8", optional = true }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "add_to_std_polkadot_primitives" }
