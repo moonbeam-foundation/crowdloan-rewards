@@ -2,28 +2,42 @@
 
 use crate::{BalanceOf, Call, Config, Pallet};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
-use cumulus_primitives_core::relay_chain;
-use cumulus_primitives_core::relay_chain::v1::HeadData;
-use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
-use cumulus_primitives_core::PersistedValidationData;
+use cumulus_primitives_core::{
+	relay_chain::{v1::HeadData, BlockNumber as RelayChainBlockNumber},
+	PersistedValidationData,
+};
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use ed25519_dalek::Signer;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::dispatch::UnfilteredDispatchable;
-use frame_support::inherent::InherentData;
-use frame_support::inherent::ProvideInherent;
-use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
-use frame_support::traits::{OnFinalize, OnInitialize};
+use frame_support::{
+	dispatch::UnfilteredDispatchable,
+	inherent::{InherentData, ProvideInherent},
+	traits::{Currency, Get, OnFinalize, OnInitialize},
+};
 use frame_system::RawOrigin;
 use parity_scale_codec::Encode;
-use sp_core::crypto::{AccountId32, UncheckedFrom};
-use sp_core::ed25519;
-use sp_core::H256;
-use sp_runtime::traits::One;
-use sp_runtime::MultiSignature;
-use sp_std::vec;
+use sp_core::{
+	crypto::{AccountId32, UncheckedFrom},
+	ed25519,
+};
+use sp_runtime::{traits::One, MultiSignature};
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
+
+// These is a fake proof that emulates a storage proof inserted as the validation data
+// We avoid using the spoof builder here because it generates an issue when compiling without std
+// Fake storage proof
+const MOCK_PROOF: [u8; 71] = [
+	127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180, 157,
+	149, 50, 13, 144, 33, 153, 76, 133, 15, 37, 184, 227, 133, 144, 0, 0, 32, 0, 0, 0, 16, 0, 8, 0,
+	0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0,
+];
+
+// fake storage root. This is valid with the previous proof
+const MOCK_PROOF_HASH: [u8; 32] = [
+	216, 6, 227, 175, 180, 211, 98, 117, 202, 245, 206, 51, 21, 143, 100, 232, 96, 217, 14, 71,
+	243, 146, 7, 202, 245, 129, 165, 70, 72, 184, 130, 141,
+];
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -53,29 +67,11 @@ fn create_funded_user<T: Config>(
 	user
 }
 
-// These creates a fake proof that emulates a storage proof inserted as the validation data
-// We avoid using the spoof builder here because it generates an issue when compiling without std
-// This proof however was generated with the spoof
-fn create_fake_valid_proof() -> (H256, StorageProof) {
-	let proof = StorageProof::new(vec![vec![
-		127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180,
-		157, 149, 50, 13, 144, 33, 153, 76, 133, 15, 37, 184, 227, 133, 144, 0, 0, 32, 0, 0, 0, 16,
-		0, 8, 0, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0,
-	]]);
-	let hash = [
-		216, 6, 227, 175, 180, 211, 98, 117, 202, 245, 206, 51, 21, 143, 100, 232, 96, 217, 14, 71,
-		243, 146, 7, 202, 245, 129, 165, 70, 72, 184, 130, 141,
-	]
-	.into();
-
-	(hash, proof)
-}
-
 fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
-	let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
+	//let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
 	let vfp = PersistedValidationData {
 		relay_parent_number: block_number as RelayChainBlockNumber,
-		relay_parent_storage_root,
+		relay_parent_storage_root: MOCK_PROOF_HASH.into(),
 		max_pov_size: 1000u32,
 		parent_head: HeadData(vec![1, 1, 1]),
 	};
@@ -83,7 +79,7 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 		let mut inherent_data = InherentData::default();
 		let system_inherent_data = ParachainInherentData {
 			validation_data: vfp.clone(),
-			relay_chain_state,
+			relay_chain_state: StorageProof::new(vec![MOCK_PROOF.to_vec()]),
 			downward_messages: Default::default(),
 			horizontal_messages: Default::default(),
 		};
@@ -137,18 +133,13 @@ fn insert_contributors<T: Config>(
 }
 
 /// Create a Contributor.
-fn close_initialization<T: Config>(
-	end_relay: relay_chain::BlockNumber,
-) -> Result<(), &'static str> {
+fn close_initialization<T: Config>(end_relay: RelayChainBlockNumber) -> Result<(), &'static str> {
 	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_relay)?;
 	Ok(())
 }
 
-fn create_fake_sig<T: Config>(signed_account: T::AccountId) -> (AccountId32, MultiSignature) {
-	let seed: [u8; 32] = [
-		47, 140, 97, 41, 216, 22, 207, 81, 195, 116, 188, 127, 8, 195, 230, 62, 209, 86, 207, 120,
-		174, 251, 74, 101, 80, 217, 123, 135, 153, 121, 119, 238,
-	];
+fn create_sig<T: Config>(signed_account: T::AccountId) -> (AccountId32, MultiSignature) {
+	let seed: [u8; 32] = [1u8; 32];
 	let secret = ed25519_dalek::SecretKey::from_bytes(&seed).unwrap();
 	let public = ed25519_dalek::PublicKey::from(&secret);
 	let pair = ed25519_dalek::Keypair { secret, public };
@@ -332,7 +323,7 @@ benchmarks! {
 		let caller: T::AccountId = create_funded_user::<T>("user", MAX_USERS-x-1, 100u32.into());
 
 		// Create a fake sig for such an account
-		let (relay_account, signature) = create_fake_sig::<T>(caller.clone());
+		let (relay_account, signature) = create_sig::<T>(caller.clone());
 
 		// Push this new contributor
 		let mut new_cont = Vec::new();

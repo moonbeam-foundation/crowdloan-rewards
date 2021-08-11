@@ -40,16 +40,18 @@
 // --output
 // /tmp/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use frame_support::{
+	traits::Get,
+	weights::{constants::RocksDbWeight, Weight},
+};
 use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_crowdloan_rewards.
 pub trait WeightInfo {
-	fn initialize_reward_vec(x: u32, ) -> Weight;
+	fn initialize_reward_vec(x: u32) -> Weight;
 	fn complete_initialization() -> Weight;
 	fn claim() -> Weight;
 	fn update_reward_address() -> Weight;
@@ -59,7 +61,7 @@ pub trait WeightInfo {
 /// Weights for pallet_crowdloan_rewards using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn initialize_reward_vec(x: u32, ) -> Weight {
+	fn initialize_reward_vec(x: u32) -> Weight {
 		(50_432_000 as Weight)
 			// Standard Error: 21_000
 			.saturating_add((72_298_000 as Weight).saturating_mul(x as Weight))
@@ -92,7 +94,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn initialize_reward_vec(x: u32, ) -> Weight {
+	fn initialize_reward_vec(x: u32) -> Weight {
 		(50_432_000 as Weight)
 			// Standard Error: 21_000
 			.saturating_add((72_298_000 as Weight).saturating_mul(x as Weight))
