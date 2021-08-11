@@ -9,6 +9,7 @@ description = "Reward citizens who participated in a crowdloan to acquire a para
 parity-scale-codec = { version = "2.1.1", default-features = false}
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 log = { version = "0.4", default-features = false }
+getrandom = { version = "0.2.3", default-features = false, features = ["js"],  optional=true}
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.8" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.8" }
@@ -25,10 +26,9 @@ cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", defaul
 cumulus-primitives-parachain-inherent = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
 ed25519-dalek = { version = "1.0.1", default-features = false, features = ["u64_backend", "alloc"], optional = true }
 sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.8", optional = true }
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.8", optional = true }
-sp-state-machine = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.8", optional = true }
-cumulus-test-relay-sproof-builder = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098",  optional = true }
 
+cumulus-test-relay-sproof-builder = { git = "https://github.com/purestake/cumulus", branch = "joshy-np098", optional = true }
+sp-state-machine = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", optional = true }
 [features]
 default = ["std"]
 std = [
@@ -48,15 +48,16 @@ std = [
     "cumulus-primitives-core/std",
     "nimbus-primitives/std",
     "cumulus-primitives-parachain-inherent/std",
+    "cumulus-test-relay-sproof-builder",
+    "sp-trie/std",
+    "ed25519-dalek",
     "sp-state-machine/std",
-    "polkadot-primitives/std",
-    "cumulus-test-relay-sproof-builder/std"
+    "getrandom"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
     "sp-trie",
+    "getrandom",
+    "cumulus-test-relay-sproof-builder",
     "ed25519-dalek",
-    "polkadot-primitives",
-    "sp-state-machine",
-    "cumulus-test-relay-sproof-builder"
 ]
