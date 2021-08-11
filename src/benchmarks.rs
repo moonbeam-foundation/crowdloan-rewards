@@ -1,27 +1,33 @@
+
+// Copyright 2019-2021 PureStake Inc.
+// This file is part of Moonbeam.
+
+// Moonbeam is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Moonbeam is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
+
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::{BalanceOf, Call, Config, Pallet};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
-use cumulus_primitives_core::relay_chain;
-use cumulus_primitives_core::relay_chain::v1::HeadData;
-use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
-use cumulus_primitives_core::PersistedValidationData;
+use cumulus_primitives_core::{relay_chain::{v1::HeadData, BlockNumber as RelayChainBlockNumber}, PersistedValidationData};
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use ed25519_dalek::Signer;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::dispatch::UnfilteredDispatchable;
-use frame_support::inherent::InherentData;
-use frame_support::inherent::ProvideInherent;
-use frame_support::traits::{Currency, Get}; // OnInitialize, OnFinalize
-use frame_support::traits::{OnFinalize, OnInitialize};
+use frame_support::{dispatch::UnfilteredDispatchable, inherent::{InherentData, ProvideInherent}, traits::{Currency, Get, OnFinalize, OnInitialize}};
 use frame_system::RawOrigin;
 use parity_scale_codec::Encode;
-use sp_core::crypto::{AccountId32, UncheckedFrom};
-use sp_core::ed25519;
-use sp_core::H256;
-use sp_runtime::traits::One;
-use sp_runtime::MultiSignature;
-use sp_std::vec;
+use sp_core::{crypto::{AccountId32, UncheckedFrom}, ed25519, H256};
+use sp_runtime::{traits::{One, HashFor}, MultiSignature};
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
 
@@ -57,7 +63,9 @@ fn create_funded_user<T: Config>(
 // We avoid using the spoof builder here because it generates an issue when compiling without std
 // This proof however was generated with the spoof
 fn create_fake_valid_proof() -> (H256, StorageProof) {
-	let proof = StorageProof::new(vec![vec![
+	let sproof_builder = cumulus_test_relay_sproof_builder::RelayStateSproofBuilder::default();
+	sproof_builder.into_state_root_and_proof()
+	/*let proof = StorageProof::new(vec![vec![
 		127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180,
 		157, 149, 50, 13, 144, 33, 153, 76, 133, 15, 37, 184, 227, 133, 144, 0, 0, 32, 0, 0, 0, 16,
 		0, 8, 0, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0,
@@ -68,7 +76,7 @@ fn create_fake_valid_proof() -> (H256, StorageProof) {
 	]
 	.into();
 
-	(hash, proof)
+	(hash, proof)*/
 }
 
 fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
@@ -138,7 +146,7 @@ fn insert_contributors<T: Config>(
 
 /// Create a Contributor.
 fn close_initialization<T: Config>(
-	end_relay: relay_chain::BlockNumber,
+	end_relay: RelayChainBlockNumber,
 ) -> Result<(), &'static str> {
 	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_relay)?;
 	Ok(())
