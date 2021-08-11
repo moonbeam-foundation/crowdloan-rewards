@@ -72,7 +72,10 @@ fn create_fake_valid_proof() -> (H256, StorageProof) {
 }
 
 fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
-	let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
+	//let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
+	let sproof_builder = RelayStateSproofBuilder::default();
+		let (relay_parent_storage_root, relay_chain_state) =
+			sproof_builder.into_state_root_and_proof();
 	let vfp = PersistedValidationData {
 		relay_parent_number: block_number as RelayChainBlockNumber,
 		relay_parent_storage_root,
