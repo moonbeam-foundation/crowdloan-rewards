@@ -46,6 +46,7 @@ std = [
     "cumulus-primitives-core/std",
     "nimbus-primitives/std",
     "cumulus-primitives-parachain-inherent/std",
+    "cumulus-test-relay-sproof-builder/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
