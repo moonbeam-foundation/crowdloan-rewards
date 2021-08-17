@@ -119,13 +119,14 @@ fn create_contributors<T: Config>(
 fn insert_contributors<T: Config>(
 	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 ) -> Result<(), &'static str> {
-	// Due to the MaxInitContributors associated type, we need ton insert them in batches
-	// When we reach the batch size, we insert them 
+
 	let mut sub_vec = Vec::new();
 	let batch = max_batch_contributors::<T>();
-
+	// Due to the MaxInitContributors associated type, we need ton insert them in batches
+	// When we reach the batch size, we insert them 
 	for i in 0..contributors.len() {
 		sub_vec.push(contributors[i].clone());
+		// If we reached the batch size, we should insert them
 		if i as u32 % batch == batch - 1 || i == contributors.len() - 1 {
 			Pallet::<T>::initialize_reward_vec(RawOrigin::Root.into(), sub_vec.clone())?;
 			sub_vec.clear()
