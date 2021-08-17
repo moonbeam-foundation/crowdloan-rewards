@@ -417,7 +417,7 @@ pub mod pallet {
 
 			// Ensure we dont go over funds
 			ensure!(
-				current_initialized_rewards + incoming_rewards <= Self::pot(),
+				current_initialized_rewards.saturating_add(incoming_rewards) <= Self::pot(),
 				Error::<T>::BatchBeyondFundPot
 			);
 

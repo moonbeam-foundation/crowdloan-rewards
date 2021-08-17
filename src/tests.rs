@@ -883,13 +883,17 @@ fn test_assert_we_cannot_overflow_at_init() {
 	empty().execute_with(|| {
 		// The init relay block gets inserted
 		roll_to(2);
-		// Too many contributors
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![([1u8; 32].into(), Some(1), 500u32.into()),]
+		));
+		// This should overflow
 		assert_noop!(
 			Crowdloan::initialize_reward_vec(
 				Origin::root(),
 				vec![
-					([1u8; 32].into(), Some(1), 1),
-					([2u8; 32].into(), Some(2), u128::MAX),
+					([2u8; 32].into(), Some(1), 1),
+					([3u8; 32].into(), Some(2), u128::MAX),
 				]
 			),
 			Error::<Test>::BatchBeyondFundPot
