@@ -24,8 +24,8 @@ use sp_runtime::{traits::One, MultiSignature};
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
 
-// These is a fake proof that emulates a storage proof inserted as the validation data
-// We avoid using the spoof builder here because it generates an issue when compiling without std
+// This is a fake proof that emulates a storage proof inserted as the validation data
+// We avoid using the sproof builder here because it generates an issue when compiling without std
 // Fake storage proof
 const MOCK_PROOF: [u8; 71] = [
 	127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180, 157,
@@ -119,11 +119,10 @@ fn create_contributors<T: Config>(
 fn insert_contributors<T: Config>(
 	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 ) -> Result<(), &'static str> {
-
 	let mut sub_vec = Vec::new();
 	let batch = max_batch_contributors::<T>();
 	// Due to the MaxInitContributors associated type, we need ton insert them in batches
-	// When we reach the batch size, we insert them 
+	// When we reach the batch size, we insert them
 	for i in 0..contributors.len() {
 		sub_vec.push(contributors[i].clone());
 		// If we reached the batch size, we should insert them
@@ -317,7 +316,7 @@ benchmarks! {
 		// Create a fake sig for such an account
 		let (relay_account, signature) = create_sig::<T>(caller.clone());
 
-		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity	
+		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity
 		// Create 1 contributor
 		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
 		vec![(relay_account.clone().into(), None, total_pot.into())];
