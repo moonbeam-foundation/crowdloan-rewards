@@ -877,3 +877,27 @@ fn test_initialization_errors() {
 		);
 	});
 }
+
+
+#[test]
+fn test_assert_we_cannot_overflow_at_init() {
+	empty().execute_with(|| {
+		// The init relay block gets inserted
+		roll_to(2);
+		let init_block = Crowdloan::init_relay_block();
+
+		let pot = Crowdloan::pot();
+
+		// Too many contributors
+		assert_noop!(
+			Crowdloan::initialize_reward_vec(
+				Origin::root(),
+				vec![
+					([1u8; 32].into(), Some(1), 1),
+					([2u8; 32].into(), Some(2), u128::MAX),
+				]
+			),
+			Error::<Test>::TooManyContributors
+		);
+	});
+}
