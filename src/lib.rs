@@ -189,8 +189,8 @@ pub mod pallet {
 			ensure!(
 				proof.verify(payload.as_slice(), &relay_account.clone().into()),
 				Error::<T>::InvalidClaimSignature
+				
 			);
-
 			// We ensure the relay chain id wast not yet associated to avoid multi-claiming
 			ensure!(
 				ClaimedRelayChainIds::<T>::get(&relay_account).is_none(),
@@ -412,12 +412,12 @@ pub mod pallet {
 			let incoming_rewards: BalanceOf<T> = rewards
 				.iter()
 				.fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {
-					acc + *reward
+					acc.saturating_add(*reward)
 				});
 
 			// Ensure we dont go over funds
 			ensure!(
-				current_initialized_rewards + incoming_rewards <= Self::pot(),
+				current_initialized_rewards.saturating_add(incoming_rewards) <= Self::pot(),
 				Error::<T>::BatchBeyondFundPot
 			);
 
@@ -469,9 +469,9 @@ pub mod pallet {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
 				};
-
-				current_initialized_rewards += *reward - initial_payment;
-				total_contributors += 1;
+				
+				current_initialized_rewards = current_initialized_rewards.saturating_add((*reward).saturating_sub(initial_payment));
+				total_contributors = total_contributors.saturating_add(1);
 
 				if let Some(native_account) = native_account {
 					if let Some(inserted_reward_info) = AccountsPayable::<T>::get(native_account) {
@@ -480,9 +480,9 @@ pub mod pallet {
 							native_account,
 							RewardInfo {
 								total_reward: inserted_reward_info.total_reward
-									+ reward_info.total_reward,
+									.saturating_add(reward_info.total_reward),
 								claimed_reward: inserted_reward_info.claimed_reward
-									+ reward_info.claimed_reward,
+									.saturating_add(reward_info.claimed_reward),
 							},
 						);
 					} else {

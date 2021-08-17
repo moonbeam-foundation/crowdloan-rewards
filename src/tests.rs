@@ -877,3 +877,26 @@ fn test_initialization_errors() {
 		);
 	});
 }
+
+#[test]
+fn test_assert_we_cannot_overflow_at_init() {
+	empty().execute_with(|| {
+		// The init relay block gets inserted
+		roll_to(2);
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![([1u8; 32].into(), Some(1), 500u32.into()),]
+		));
+		// This should overflow
+		assert_noop!(
+			Crowdloan::initialize_reward_vec(
+				Origin::root(),
+				vec![
+					([2u8; 32].into(), Some(2), 1),
+					([3u8; 32].into(), Some(3), u128::MAX),
+				]
+			),
+			Error::<Test>::BatchBeyondFundPot
+		);
+	});
+}
