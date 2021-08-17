@@ -23,7 +23,7 @@ use sp_core::{
 use sp_runtime::{traits::One, MultiSignature};
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
-
+use sp_std::vec;
 // This is a fake proof that emulates a storage proof inserted as the validation data
 // We avoid using the sproof builder here because it generates an issue when compiling without std
 // Fake storage proof
