@@ -878,7 +878,6 @@ fn test_initialization_errors() {
 	});
 }
 
-
 #[test]
 fn test_assert_we_cannot_overflow_at_init() {
 	empty().execute_with(|| {
