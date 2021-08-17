@@ -23,6 +23,8 @@ cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus"
 nimbus-primitives = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
 cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
 cumulus-primitives-parachain-inherent = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
+ed25519-dalek = { version = "1.0.1", default-features = false, features = ["u64_backend", "alloc"], optional = true }
+sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.8", optional = true }
 
 [dev-dependencies]
 cumulus-test-relay-sproof-builder = { git = "https://github.com/purestake/cumulus", default-features = false, branch = "joshy-np098" }
@@ -33,6 +35,7 @@ std = [
     "pallet-balances/std",
     "parity-scale-codec/std",
     "pallet-utility/std",
+    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
     "sp-core/std",
@@ -45,4 +48,9 @@ std = [
     "cumulus-primitives-core/std",
     "nimbus-primitives/std",
     "cumulus-primitives-parachain-inherent/std",
-    ]
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "sp-trie",
+    "ed25519-dalek"
+]

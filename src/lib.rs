@@ -62,14 +62,18 @@
 
 use frame_support::pallet;
 pub use pallet::*;
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+mod benchmarks;
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
+pub mod weights;
 
 #[pallet]
 pub mod pallet {
 
+	use crate::weights::WeightInfo;
 	use cumulus_primitives_core::relay_chain;
 	use frame_support::traits::WithdrawReasons;
 	use frame_support::{
@@ -118,10 +122,13 @@ pub mod pallet {
 			+ Ord
 			+ Default
 			+ Debug
-			+ Into<AccountId32>;
+			+ Into<AccountId32>
+			+ From<AccountId32>;
+
+		type WeightInfo: WeightInfo;
 	}
 
-	type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
+	pub type BalanceOf<T> = <<T as Config>::RewardCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
@@ -161,7 +168,9 @@ pub mod pallet {
 		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
 		/// state of the relay chain, we should first check whether that memo field exists in the
 		/// contribution
-		#[pallet::weight(0)]
+		/// Weight argument is 0 since it depends on how the storage trie is composed
+		/// Once we have the number of contributors, we can probably add such a weight here
+		#[pallet::weight(T::WeightInfo::associate_native_identity())]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
 			reward_account: T::AccountId,
@@ -175,6 +184,7 @@ pub mod pallet {
 			// 2. Signs a valid native identity
 			// Check the proof. The Proof consists of a Signature of the rewarded account with the
 			// claimer key
+
 			let payload = reward_account.encode();
 			ensure!(
 				proof.verify(payload.as_slice(), &relay_account.clone().into()),
@@ -228,7 +238,7 @@ pub mod pallet {
 		}
 
 		/// Collect whatever portion of your reward are currently vested.
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::claim())]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -287,7 +297,9 @@ pub mod pallet {
 		}
 
 		/// Update reward address. To determine whether its something we want to keep
-		#[pallet::weight(0)]
+		/// Weight argument is 0 since it depends on how the storage trie is composed
+		/// Once we have the number of contributors, we can probably add such a weight here
+		#[pallet::weight(T::WeightInfo::update_reward_address())]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
 			new_reward_account: T::AccountId,
@@ -323,7 +335,7 @@ pub mod pallet {
 		///  -The reward contribution money matches the crowdloan pot
 		///  -The end relay block is higher than the init relay block
 		///  -The initialization has not complete yet
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::complete_initialization())]
 		pub fn complete_initialization(
 			origin: OriginFor<T>,
 			lease_ending_block: relay_chain::BlockNumber,
@@ -373,7 +385,7 @@ pub mod pallet {
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
 		/// We can change this behavior to check this beforehand if we prefer
 		/// We check that the number of contributors inserted is less than T::MaxInitContributors::get()
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
 			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,

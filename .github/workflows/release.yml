@@ -20,4 +20,4 @@ jobs:
         run: cargo fmt --all
 
       - name: Test
-        run: cargo test --release --all
+        run: cargo test --release --features=runtime-benchmarks --all
