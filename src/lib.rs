@@ -189,8 +189,8 @@ pub mod pallet {
 			ensure!(
 				proof.verify(payload.as_slice(), &relay_account.clone().into()),
 				Error::<T>::InvalidClaimSignature
+				
 			);
-
 			// We ensure the relay chain id wast not yet associated to avoid multi-claiming
 			ensure!(
 				ClaimedRelayChainIds::<T>::get(&relay_account).is_none(),
@@ -484,9 +484,9 @@ pub mod pallet {
 							// as we already checked before that these rewards do not overflow existing ones
 							RewardInfo {
 								total_reward: inserted_reward_info.total_reward
-									+ reward_info.total_reward,
+									.saturating_add(reward_info.total_reward),
 								claimed_reward: inserted_reward_info.claimed_reward
-									+ reward_info.claimed_reward,
+									.saturating_add(reward_info.claimed_reward),
 							},
 						);
 					} else {
