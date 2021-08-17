@@ -23,6 +23,7 @@ use sp_core::{
 use sp_runtime::{traits::One, MultiSignature};
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
+use sp_std::vec;
 
 // This is a fake proof that emulates a storage proof inserted as the validation data
 // We avoid using the sproof builder here because it generates an issue when compiling without std
@@ -99,7 +100,7 @@ fn create_contributors<T: Config>(
 	total_number: u32,
 	seed_offset: u32,
 ) -> Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> {
-	let mut contribution_vec = Vec::new();
+	let mut contribution_vec = vec::Vec::new();
 	for i in 0..total_number {
 		let seed = SEED - seed_offset - i;
 		let mut account: [u8; 32] = [0u8; 32];
