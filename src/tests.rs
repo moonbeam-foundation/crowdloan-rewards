@@ -892,8 +892,8 @@ fn test_assert_we_cannot_overflow_at_init() {
 			Crowdloan::initialize_reward_vec(
 				Origin::root(),
 				vec![
-					([2u8; 32].into(), Some(1), 1),
-					([3u8; 32].into(), Some(2), u128::MAX),
+					([2u8; 32].into(), Some(2), 1),
+					([3u8; 32].into(), Some(3), u128::MAX),
 				]
 			),
 			Error::<Test>::BatchBeyondFundPot
