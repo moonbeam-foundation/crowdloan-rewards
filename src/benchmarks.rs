@@ -21,9 +21,9 @@ use sp_core::{
 	ed25519,
 };
 use sp_runtime::{traits::One, MultiSignature};
+use sp_std::vec::Vec;
 use sp_trie::StorageProof;
 use sp_std::vec;
-
 // This is a fake proof that emulates a storage proof inserted as the validation data
 // We avoid using the sproof builder here because it generates an issue when compiling without std
 // Fake storage proof
@@ -98,7 +98,7 @@ fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
 fn create_contributors<T: Config>(
 	total_number: u32,
 	seed_offset: u32,
-) -> vec::Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> {
+) -> Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> {
 	let mut contribution_vec = Vec::new();
 	for i in 0..total_number {
 		let seed = SEED - seed_offset - i;
@@ -117,7 +117,7 @@ fn create_contributors<T: Config>(
 
 /// Insert contributors.
 fn insert_contributors<T: Config>(
-	contributors: vec::Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
+	contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
 ) -> Result<(), &'static str> {
 	let mut sub_vec = Vec::new();
 	let batch = max_batch_contributors::<T>();
@@ -221,7 +221,7 @@ benchmarks! {
 
 		// We verified there is no dependency of the number of contributors already inserted in claim
 		// Create 1 contributor
-		let contributors: vec::Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
+		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
 			vec![(AccountId32::from([1u8;32]).into(), Some(caller.clone()), total_pot.into())];
 
 		// Insert them
@@ -266,7 +266,7 @@ benchmarks! {
 
 		// We verified there is no dependency of the number of contributors already inserted in update_reward_address
 		// Create 1 contributor
-		let contributors: vec::Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
+		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
 			vec![(AccountId32::from([1u8;32]).into(), Some(caller.clone()), total_pot.into())];
 
 		// Insert them
@@ -318,7 +318,7 @@ benchmarks! {
 
 		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity
 		// Create 1 contributor
-		let contributors: vec::Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
+		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
 		vec![(relay_account.clone().into(), None, total_pot.into())];
 
 		// Insert them
