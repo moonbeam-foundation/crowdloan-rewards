@@ -469,19 +469,15 @@ pub mod pallet {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
 				};
-
-				// It should be safe not to use saturating_add here
-				// as we already checked before that these rewards do not overflow existing ones
-				current_initialized_rewards += *reward - initial_payment;
-				total_contributors += 1;
+				
+				current_initialized_rewards = current_initialized_rewards.saturating_add((*reward).saturating_sub(initial_payment));
+				total_contributors = total_contributors.saturating_add(1);
 
 				if let Some(native_account) = native_account {
 					if let Some(inserted_reward_info) = AccountsPayable::<T>::get(native_account) {
 						// the native account has already some rewards in, we add the new ones
 						AccountsPayable::<T>::insert(
 							native_account,
-							// It should be safe not to use saturating_add here
-							// as we already checked before that these rewards do not overflow existing ones
 							RewardInfo {
 								total_reward: inserted_reward_info.total_reward
 									.saturating_add(reward_info.total_reward),
