@@ -225,7 +225,7 @@ pub mod pallet {
 			<UnassociatedContributions<T>>::remove(&relay_account);
 
 			// Insert in mapping
-			ClaimedRelayChainIds::<T>::insert(&relay_account, ());
+			ClaimedRelayChainIds::<T>::insert(&relay_account, &reward_account);
 
 			// Emit Event
 			Self::deposit_event(Event::NativeIdentityAssociated(
@@ -488,7 +488,7 @@ pub mod pallet {
 					} else {
 						AccountsPayable::<T>::insert(native_account, reward_info);
 					}
-					ClaimedRelayChainIds::<T>::insert(relay_account, ());
+					ClaimedRelayChainIds::<T>::insert(relay_account, native_account);
 				} else {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
 				}
@@ -576,7 +576,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn claimed_relay_chain_ids)]
 	pub type ClaimedRelayChainIds<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, ()>;
+		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, T::AccountId>;
 	#[pallet::storage]
 	#[pallet::getter(fn unassociated_contributions)]
 	pub type UnassociatedContributions<T: Config> =
