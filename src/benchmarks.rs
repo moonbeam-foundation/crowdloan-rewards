@@ -21,9 +21,9 @@ use sp_core::{
 	ed25519,
 };
 use sp_runtime::{traits::One, MultiSignature};
+use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
-use sp_std::vec;
 // This is a fake proof that emulates a storage proof inserted as the validation data
 // We avoid using the sproof builder here because it generates an issue when compiling without std
 // Fake storage proof
@@ -264,10 +264,11 @@ benchmarks! {
 		// The user that will make the call
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 
+		let relay_account: T::RelayChainAccountId = AccountId32::from([1u8;32]).into();
 		// We verified there is no dependency of the number of contributors already inserted in update_reward_address
 		// Create 1 contributor
 		let contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> =
-			vec![(AccountId32::from([1u8;32]).into(), Some(caller.clone()), total_pot.into())];
+			vec![(relay_account.clone(), Some(caller.clone()), total_pot.into())];
 
 		// Insert them
 		insert_contributors::<T>(contributors)?;
@@ -300,9 +301,10 @@ benchmarks! {
 		// The new user
 		let new_user = create_funded_user::<T>("user", SEED+1, 0u32.into());
 
-	}:  _(RawOrigin::Signed(caller.clone()), new_user.clone())
+	}:  _(RawOrigin::Signed(caller.clone()), new_user.clone(), relay_account.clone())
 	verify {
 		assert_eq!(Pallet::<T>::accounts_payable(&new_user).unwrap().total_reward, (100u32.into()));
+		assert_eq!(Pallet::<T>::claimed_relay_chain_ids(&relay_account).unwrap(), new_user);
 	}
 
 	associate_native_identity {
