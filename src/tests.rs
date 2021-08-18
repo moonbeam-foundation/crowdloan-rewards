@@ -27,7 +27,6 @@ use sp_runtime::MultiSignature;
 // Most tests complete initialization passing initRelayBlock + VESTING as the endRelayBlock
 const VESTING: u32 = 8;
 
-#[ignore]
 #[test]
 fn geneses() {
 	empty().execute_with(|| {
@@ -74,7 +73,6 @@ fn geneses() {
 	});
 }
 
-#[ignore]
 #[test]
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
@@ -142,7 +140,6 @@ fn proving_assignation_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn initializing_multi_relay_to_single_native_address_works() {
 	empty().execute_with(|| {
@@ -184,7 +181,6 @@ fn initializing_multi_relay_to_single_native_address_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn paying_works_step_by_step() {
 	empty().execute_with(|| {
@@ -255,7 +251,6 @@ fn paying_works_step_by_step() {
 	});
 }
 
-#[ignore]
 #[test]
 fn paying_works_after_unclaimed_period() {
 	empty().execute_with(|| {
@@ -319,7 +314,6 @@ fn paying_works_after_unclaimed_period() {
 	});
 }
 
-#[ignore]
 #[test]
 fn paying_late_joiner_works() {
 	let pairs = get_ed25519_pairs(3);
@@ -363,7 +357,6 @@ fn paying_late_joiner_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn update_address_works() {
 	empty().execute_with(|| {
@@ -410,7 +403,6 @@ fn update_address_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn update_address_with_existing_address_works() {
 	empty().execute_with(|| {
@@ -458,7 +450,6 @@ fn update_address_with_existing_address_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn update_address_with_existing_with_multi_address_works() {
 	empty().execute_with(|| {
@@ -497,7 +488,6 @@ fn update_address_with_existing_with_multi_address_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn initialize_new_addresses() {
 	empty().execute_with(|| {
@@ -539,7 +529,6 @@ fn initialize_new_addresses() {
 	});
 }
 
-#[ignore]
 #[test]
 fn initialize_new_addresses_handle_dust() {
 	empty().execute_with(|| {
@@ -574,7 +563,6 @@ fn initialize_new_addresses_handle_dust() {
 	});
 }
 
-#[ignore]
 #[test]
 fn initialize_new_addresses_not_matching_funds() {
 	empty().execute_with(|| {
@@ -600,7 +588,6 @@ fn initialize_new_addresses_not_matching_funds() {
 	});
 }
 
-#[ignore]
 #[test]
 fn initialize_new_addresses_with_batch() {
 	empty().execute_with(|| {
@@ -651,7 +638,6 @@ fn initialize_new_addresses_with_batch() {
 	});
 }
 
-#[ignore]
 #[test]
 fn floating_point_arithmetic_works() {
 	empty().execute_with(|| {
@@ -728,7 +714,6 @@ fn floating_point_arithmetic_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn reward_below_vesting_period_works() {
 	empty().execute_with(|| {
@@ -819,7 +804,6 @@ fn reward_below_vesting_period_works() {
 	});
 }
 
-#[ignore]
 #[test]
 fn test_initialization_errors() {
 	empty().execute_with(|| {
