@@ -106,8 +106,7 @@ fn proving_assignation_works() {
 			Crowdloan::associate_native_identity(
 				Origin::signed(4),
 				4,
-				pairs[0].public().into(),
-				signature.clone()
+				vec![(pairs[0].public().into(), signature.clone())]
 			),
 			Error::<Test>::InvalidClaimSignature
 		);
@@ -115,8 +114,7 @@ fn proving_assignation_works() {
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
 			3,
-			pairs[0].public().into(),
-			signature.clone()
+			vec![(pairs[0].public().into(), signature.clone())]
 		));
 
 		// now three is payable
@@ -131,8 +129,7 @@ fn proving_assignation_works() {
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
 			5,
-			pairs[0].public().into(),
-			signature_2
+			vec![(pairs[0].public().into(), signature_2.clone())]
 		),);
 
 		// now five is payable
@@ -148,8 +145,7 @@ fn proving_assignation_works() {
 			Crowdloan::associate_native_identity(
 				Origin::signed(4),
 				5,
-				pairs[3].public().into(),
-				non_contributed_signature
+				vec![(pairs[3].public().into(), non_contributed_signature.clone())]
 			),
 			Error::<Test>::NoAssociatedClaim
 		);
@@ -158,8 +154,8 @@ fn proving_assignation_works() {
 			crate::Event::InitialPaymentMade(1, 100),
 			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::InitialPaymentMade(3, 100),
-			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
-			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 5, 500),
+			crate::Event::NativeIdentityAssociated(3, 500),
+			crate::Event::NativeIdentityAssociated(5, 500),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -366,8 +362,9 @@ fn paying_late_joiner_works() {
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
 			3,
+			vec![(
 			pairs[0].public().into(),
-			signature.clone()
+			signature.clone())]
 		));
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 		assert_eq!(Crowdloan::accounts_payable(&3).unwrap().claimed_reward, 500);
@@ -375,7 +372,7 @@ fn paying_late_joiner_works() {
 			crate::Event::InitialPaymentMade(1, 100),
 			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::InitialPaymentMade(3, 100),
-			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
+			crate::Event::NativeIdentityAssociated(3, 500),
 			crate::Event::RewardsPaid(3, 400),
 		];
 		assert_eq!(events(), expected);
@@ -672,7 +669,7 @@ fn initialize_new_addresses_with_batch() {
 				0,
 				DispatchError::Module {
 					index: 2,
-					error: 8,
+					error: 7,
 					message: None,
 				},
 			),
@@ -960,8 +957,7 @@ fn assignation_with_existing_key_works() {
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(1),
 			1,
-			pairs[0].public().into(),
-			signature.clone()
+			vec![(pairs[0].public().into(), signature.clone())]
 		));
 
 		roll_to(5);

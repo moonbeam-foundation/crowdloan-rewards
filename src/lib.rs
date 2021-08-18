@@ -174,8 +174,7 @@ pub mod pallet {
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
 			reward_account: T::AccountId,
-			relay_account: T::RelayChainAccountId,
-			proof: MultiSignature,
+			relay_account_proofs: Vec<(T::RelayChainAccountId, MultiSignature)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
@@ -185,15 +184,30 @@ pub mod pallet {
 			// Check the proof. The Proof consists of a Signature of the rewarded account with the
 			// claimer key
 
+
+			// Makes sure the vec is not empty
+			let (first_relay_account , _) = relay_account_proofs.first().ok_or(Error::<T>::NonMatchingProofOrAccountNumber)?;
+			let native_account = ClaimedRelayChainIds::<T>::get(first_relay_account);
 			let payload = reward_account.encode();
-			ensure!(
-				proof.verify(payload.as_slice(), &relay_account.clone().into()),
-				Error::<T>::InvalidClaimSignature
-			);
+
+			// We can start iterating from 1
+			for (i, (relay_account, relay_proof)) in relay_account_proofs.iter().enumerate() {
+				if i!=0 {
+					let associated_account = ClaimedRelayChainIds::<T>::get(relay_account);
+					ensure!(
+						associated_account == native_account,
+						Error::<T>::NonMatchingAssociatedAccountsForRelayAccounts,
+					);
+				} 
+				ensure!(
+					relay_proof.verify(payload.as_slice(), &relay_account.clone().into()),
+					Error::<T>::InvalidClaimSignature
+				);
+			}
 
 			let mut reward_info =
 				// If an association exists, we just need to insert it in the new reward address
-				if let Some(associated) = ClaimedRelayChainIds::<T>::get(&relay_account) {
+				if let Some(associated) = native_account {
 					// Get reward info
 					let reward_info = AccountsPayable::<T>::get(&associated)
 						.ok_or(Error::<T>::NoAssociatedClaim)?;
@@ -204,7 +218,7 @@ pub mod pallet {
 				// Else, we just need to associate it and pay rewards
 				else {
 					// Upon error this should check the relay chain state in this case
-					let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
+					let mut reward_info = UnassociatedContributions::<T>::get(&first_relay_account)
 						.ok_or(Error::<T>::NoAssociatedClaim)?;
 
 					// Make the first payment
@@ -223,7 +237,7 @@ pub mod pallet {
 					));
 
 					// Remove from unassociated
-					<UnassociatedContributions<T>>::remove(&relay_account);
+					<UnassociatedContributions<T>>::remove(&first_relay_account);
 
 					reward_info.claimed_reward = first_payment;
 					reward_info
@@ -237,21 +251,28 @@ pub mod pallet {
 				reward_info.claimed_reward = reward_info
 					.claimed_reward
 					.saturating_add(info_existing_account.claimed_reward);
+				let amount = AssociatedRelayAddresses::<T>::get(&reward_account).ok_or(Error::<T>::NoAssociatedClaim)?;
+				AssociatedRelayAddresses::<T>::insert(&reward_account,amount.saturating_add(1));
+			}
+			else {
+				AssociatedRelayAddresses::<T>::insert(&reward_account,1);
 			}
 
 			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
 
-			// Insert in mapping
-			ClaimedRelayChainIds::<T>::insert(&relay_account, &reward_account);
+			
+			for (relay_account, _) in relay_account_proofs.iter() {
+				// Insert in mapping
+				ClaimedRelayChainIds::<T>::insert(&relay_account, &reward_account);
+			}
+
 
 			// Emit Event
 			Self::deposit_event(Event::NativeIdentityAssociated(
-				relay_account,
-				reward_account,
+				reward_account.clone(),
 				reward_info.total_reward,
 			));
-
 			Ok(Default::default())
 		}
 
@@ -509,6 +530,9 @@ pub mod pallet {
 				if let Some(native_account) = native_account {
 					if let Some(inserted_reward_info) = AccountsPayable::<T>::get(native_account) {
 						// the native account has already some rewards in, we add the new ones
+						let amount = AssociatedRelayAddresses::<T>::get(native_account).ok_or(Error::<T>::NoAssociatedClaim)?;
+						AssociatedRelayAddresses::<T>::insert(native_account,amount.saturating_add(1));
+
 						AccountsPayable::<T>::insert(
 							native_account,
 							RewardInfo {
@@ -519,6 +543,8 @@ pub mod pallet {
 							},
 						);
 					} else {
+						// First reward association
+						AssociatedRelayAddresses::<T>::insert(native_account, 1);
 						AccountsPayable::<T>::insert(native_account, reward_info);
 					}
 					ClaimedRelayChainIds::<T>::insert(relay_account, native_account);
@@ -546,9 +572,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// User trying to associate a native identity with a relay chain identity for posterior
-		/// reward claiming provided an already associated relay chain identity
-		AlreadyAssociated,
 		/// Trying to introduce a batch that goes beyond the limits of the funds
 		BatchBeyondFundPot,
 		/// First claim already done
@@ -579,6 +602,12 @@ pub mod pallet {
 		VestingPeriodNonValid,
 		/// Provided a non valid contributor
 		NonValidContributor,
+		/// Provided a non valid contributor
+		NonMatchingProofOrAccountNumber,
+		/// Provided a non valid contributor
+		ProofNeedsToBeProvided,
+		/// Provided a proof for different reward accounts
+		NonMatchingAssociatedAccountsForRelayAccounts,
 	}
 
 	#[pallet::genesis_config]
@@ -616,6 +645,11 @@ pub mod pallet {
 	#[pallet::getter(fn unassociated_contributions)]
 	pub type UnassociatedContributions<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, RewardInfo<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn num_of_associated_relay_addresses)]
+	pub type AssociatedRelayAddresses<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, u32>;
 	#[pallet::storage]
 	#[pallet::getter(fn initialized)]
 	pub type Initialized<T: Config> = StorageValue<_, bool, ValueQuery, T::Initialized>;
@@ -648,7 +682,7 @@ pub mod pallet {
 		InitialPaymentMade(T::AccountId, BalanceOf<T>),
 		/// Someone has proven they made a contribution and associated a native identity with it.
 		/// Data is the relay account,  native account and the total amount of _rewards_ that will be paid
-		NativeIdentityAssociated(T::RelayChainAccountId, T::AccountId, BalanceOf<T>),
+		NativeIdentityAssociated(T::AccountId, BalanceOf<T>),
 		/// A contributor has claimed some rewards.
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(T::AccountId, BalanceOf<T>),
