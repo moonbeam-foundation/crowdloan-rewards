@@ -229,6 +229,7 @@ pub mod pallet {
 			// We add the first payment to claimed
 			reward_info.claimed_reward = reward_info.claimed_reward.saturating_add(first_payment);
 
+			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
 
 			// Remove from unassociated
