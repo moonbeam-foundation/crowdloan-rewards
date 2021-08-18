@@ -216,9 +216,19 @@ pub mod pallet {
 				first_payment,
 			));
 
-			reward_info.claimed_reward = first_payment;
+			// If the account already exists, we should add the new rewards
+			if let Some(info_existing_account) = AccountsPayable::<T>::get(&reward_account) {
+				reward_info.total_reward = reward_info
+					.total_reward
+					.saturating_add(info_existing_account.total_reward);
+				reward_info.claimed_reward = reward_info
+					.claimed_reward
+					.saturating_add(info_existing_account.claimed_reward);
+			}
 
-			// Insert on payable
+			// We add the first payment to claimed
+			reward_info.claimed_reward = reward_info.claimed_reward.saturating_add(first_payment);
+
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
 
 			// Remove from unassociated
