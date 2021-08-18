@@ -87,7 +87,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	fn associate_native_identity() -> Weight {
 		(152_997_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
+			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 }
@@ -120,7 +120,7 @@ impl WeightInfo for () {
 	}
 	fn associate_native_identity() -> Weight {
 		(152_997_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
+			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
 }
