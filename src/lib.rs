@@ -191,38 +191,56 @@ pub mod pallet {
 				Error::<T>::InvalidClaimSignature
 			);
 
-			// We ensure the relay chain id wast not yet associated to avoid multi-claiming
-			ensure!(
-				ClaimedRelayChainIds::<T>::get(&relay_account).is_none(),
-				Error::<T>::AlreadyAssociated
-			);
+			let mut reward_info =
+				// If an association exists, we just need to insert it in the new reward address
+				if let Some(associated) = ClaimedRelayChainIds::<T>::get(&relay_account) {
+					// Get reward info
+					let reward_info = AccountsPayable::<T>::get(&associated)
+						.ok_or(Error::<T>::NoAssociatedClaim)?;
+					// Remove from associated
+					AccountsPayable::<T>::remove(&associated);
+					reward_info
+				}
+				// Else, we just need to associate it and pay rewards
+				else {
+					// Upon error this should check the relay chain state in this case
+					let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
+						.ok_or(Error::<T>::NoAssociatedClaim)?;
 
-			// Upon error this should check the relay chain state in this case
-			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
-				.ok_or(Error::<T>::NoAssociatedClaim)?;
+					// Make the first payment
+					let first_payment = T::InitializationPayment::get() * reward_info.total_reward;
 
-			// Make the first payment
-			let first_payment = T::InitializationPayment::get() * reward_info.total_reward;
+					T::RewardCurrency::transfer(
+						&PALLET_ID.into_account(),
+						&reward_account,
+						first_payment,
+						AllowDeath,
+					)?;
 
-			T::RewardCurrency::transfer(
-				&PALLET_ID.into_account(),
-				&reward_account,
-				first_payment,
-				AllowDeath,
-			)?;
+					Self::deposit_event(Event::InitialPaymentMade(
+						reward_account.clone(),
+						first_payment,
+					));
 
-			Self::deposit_event(Event::InitialPaymentMade(
-				reward_account.clone(),
-				first_payment,
-			));
+					// Remove from unassociated
+					<UnassociatedContributions<T>>::remove(&relay_account);
 
-			reward_info.claimed_reward = first_payment;
+					reward_info.claimed_reward = first_payment;
+					reward_info
+				};
+
+			// We update if there is such an account already with rewards
+			if let Some(info_existing_account) = AccountsPayable::<T>::get(&reward_account) {
+				reward_info.total_reward = reward_info
+					.total_reward
+					.saturating_add(info_existing_account.total_reward);
+				reward_info.claimed_reward = reward_info
+					.claimed_reward
+					.saturating_add(info_existing_account.claimed_reward);
+			}
 
 			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
-
-			// Remove from unassociated
-			<UnassociatedContributions<T>>::remove(&relay_account);
 
 			// Insert in mapping
 			ClaimedRelayChainIds::<T>::insert(&relay_account, &reward_account);

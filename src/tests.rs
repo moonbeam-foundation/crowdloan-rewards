@@ -77,6 +77,8 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
+	let signature_2: MultiSignature = pairs[0].sign(&5u64.encode()).into();
+
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
@@ -108,23 +110,14 @@ fn proving_assignation_works() {
 			),
 			Error::<Test>::InvalidClaimSignature
 		);
-		// Signature is right, prove passes
+		// Signature is right, prove passes to unassociated
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
 			3,
 			pairs[0].public().into(),
 			signature.clone()
 		));
-		// Signature is right, but address already claimed
-		assert_noop!(
-			Crowdloan::associate_native_identity(
-				Origin::signed(4),
-				3,
-				pairs[0].public().into(),
-				signature
-			),
-			Error::<Test>::AlreadyAssociated
-		);
+
 		// now three is payable
 		assert!(Crowdloan::accounts_payable(&3).is_some());
 		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
@@ -133,11 +126,28 @@ fn proving_assignation_works() {
 			3
 		);
 
+		// We are going to change the reward address through relay chains key
+		assert_ok!(Crowdloan::associate_native_identity(
+			Origin::signed(4),
+			5,
+			pairs[0].public().into(),
+			signature_2
+		),);
+
+		// now five is payable
+		assert!(Crowdloan::accounts_payable(&3).is_none());
+		assert!(Crowdloan::accounts_payable(&5).is_some());
+		assert_eq!(
+			Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).unwrap(),
+			5
+		);
+
 		let expected = vec![
 			crate::Event::InitialPaymentMade(1, 100),
 			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::InitialPaymentMade(3, 100),
 			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 3, 500),
+			crate::Event::NativeIdentityAssociated(pairs[0].public().into(), 5, 500),
 		];
 		assert_eq!(events(), expected);
 	});
@@ -896,5 +906,63 @@ fn test_initialization_errors() {
 			Crowdloan::complete_initialization(Origin::root(), init_block),
 			Error::<Test>::RewardVecAlreadyInitialized
 		);
+	});
+}
+
+#[test]
+fn assignation_with_existing_key_works() {
+	let pairs = get_ed25519_pairs(1);
+	let signature: MultiSignature = pairs[0].sign(&1u64.encode()).into();
+	empty().execute_with(|| {
+		// The init relay block gets inserted
+		roll_to(2);
+		// Insert contributors
+		let init_block = Crowdloan::init_relay_block();
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				([1u8; 32].into(), Some(1), 1250u32.into()),
+				(pairs[0].public().into(), None, 1250u32.into()),
+			],
+		));
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		// 1 is payable, but its rewards only contain the associated part
+		assert!(Crowdloan::accounts_payable(&1).is_some());
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().total_reward, 1250);
+
+		roll_to(4);
+
+		// Let's say we claim now
+		// Every step we should claim 125
+		// We started at 2
+		assert_ok!(Crowdloan::claim(Origin::signed(1),));
+
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
+
+		// Signature is right, prove passes
+		assert_ok!(Crowdloan::associate_native_identity(
+			Origin::signed(1),
+			1,
+			pairs[0].public().into(),
+			signature.clone()
+		));
+
+		roll_to(5);
+
+		// 3 periods, 125 per period * 3 periods = 375, plus initial payment = 625
+		// But we have two relay accounts pointing at the same native account, so 1250
+		assert_ok!(Crowdloan::claim(Origin::signed(1),));
+
+		assert!(Crowdloan::accounts_payable(&1).is_some());
+		assert_eq!(
+			Crowdloan::accounts_payable(&1).unwrap().claimed_reward,
+			1250
+		);
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().total_reward, 2500);
 	});
 }
