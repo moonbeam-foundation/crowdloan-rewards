@@ -311,7 +311,7 @@ pub mod pallet {
 			let current_address = ClaimedRelayChainIds::<T>::get(&relay_account)
 				.ok_or(Error::<T>::NoAssociatedClaim)?;
 
-			// This ensures the lease ending block is bigger than the init relay block
+			// This ensures the address is the one we have recorded
 			ensure!(current_address == signer, Error::<T>::NonValidContributor);
 
 			// Calculate the veted amount on demand.
