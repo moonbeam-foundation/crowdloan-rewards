@@ -303,8 +303,16 @@ pub mod pallet {
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
 			new_reward_account: T::AccountId,
+			relay_account: T::RelayChainAccountId,
 		) -> DispatchResultWithPostInfo {
 			let signer = ensure_signed(origin)?;
+
+			// We need to ensure that the claimed_relay_chain_ids mapping contains the right data
+			let current_address = ClaimedRelayChainIds::<T>::get(&relay_account)
+				.ok_or(Error::<T>::NoAssociatedClaim)?;
+
+			// This ensures the lease ending block is bigger than the init relay block
+			ensure!(current_address == signer, Error::<T>::NonValidContributor);
 
 			// Calculate the veted amount on demand.
 			let mut info =
@@ -325,8 +333,15 @@ pub mod pallet {
 			// Update new rewarded acount
 			AccountsPayable::<T>::insert(&new_reward_account, &info);
 
+			// Update new rewarded acount
+			ClaimedRelayChainIds::<T>::insert(&relay_account, &new_reward_account);
+
 			// Emit event
-			Self::deposit_event(Event::RewardAddressUpdated(signer, new_reward_account));
+			Self::deposit_event(Event::RewardAddressUpdated(
+				relay_account,
+				signer,
+				new_reward_account,
+			));
 
 			Ok(Default::default())
 		}
@@ -544,6 +559,8 @@ pub mod pallet {
 		TooManyContributors,
 		/// Provided vesting period is not valid
 		VestingPeriodNonValid,
+		/// Provided a non valid contributor
+		NonValidContributor,
 	}
 
 	#[pallet::genesis_config]
@@ -618,7 +635,7 @@ pub mod pallet {
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(T::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(T::AccountId, T::AccountId),
+		RewardAddressUpdated(T::RelayChainAccountId, T::AccountId, T::AccountId),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
