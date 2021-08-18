@@ -75,13 +75,14 @@ fn geneses() {
 
 #[test]
 fn proving_assignation_works() {
-	let pairs = get_ed25519_pairs(3);
+	let pairs = get_ed25519_pairs(4);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
 	let signature_2: MultiSignature = pairs[0].sign(&5u64.encode()).into();
+	let non_contributed_signature: MultiSignature = pairs[3].sign(&5u64.encode()).into();
 
 	empty().execute_with(|| {
 		// Insert contributors
-		let pairs = get_ed25519_pairs(3);
+		let pairs = get_ed25519_pairs(4);
 		let init_block = Crowdloan::init_relay_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
@@ -140,6 +141,17 @@ fn proving_assignation_works() {
 		assert_eq!(
 			Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).unwrap(),
 			5
+		);
+
+		// Ensure a non-contributed relay cannot do anything
+		assert_noop!(
+			Crowdloan::associate_native_identity(
+				Origin::signed(4),
+				5,
+				pairs[3].public().into(),
+				non_contributed_signature
+			),
+			Error::<Test>::NoAssociatedClaim
 		);
 
 		let expected = vec![
