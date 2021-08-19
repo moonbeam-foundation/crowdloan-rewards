@@ -77,6 +77,7 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
+
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
@@ -97,6 +98,13 @@ fn proving_assignation_works() {
 		));
 		// 4 is not payable first
 		assert!(Crowdloan::accounts_payable(&3).is_none());
+		assert_eq!(
+			Crowdloan::accounts_payable(&1)
+				.unwrap()
+				.contributed_relay_addresses,
+			vec![[1u8; 32]]
+		);
+
 		roll_to(4);
 		// Signature is wrong, prove fails
 		assert_noop!(
@@ -108,6 +116,7 @@ fn proving_assignation_works() {
 			),
 			Error::<Test>::InvalidClaimSignature
 		);
+
 		// Signature is right, prove passes
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
@@ -115,6 +124,7 @@ fn proving_assignation_works() {
 			pairs[0].public().into(),
 			signature.clone()
 		));
+
 		// Signature is right, but address already claimed
 		assert_noop!(
 			Crowdloan::associate_native_identity(
@@ -127,6 +137,13 @@ fn proving_assignation_works() {
 		);
 		// now three is payable
 		assert!(Crowdloan::accounts_payable(&3).is_some());
+		assert_eq!(
+			Crowdloan::accounts_payable(&3)
+				.unwrap()
+				.contributed_relay_addresses,
+			vec![*pairs[0].public().as_array_ref()]
+		);
+
 		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_some());
 
@@ -164,6 +181,13 @@ fn initializing_multi_relay_to_single_native_address_works() {
 		));
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
+		assert_eq!(
+			Crowdloan::accounts_payable(&1)
+				.unwrap()
+				.contributed_relay_addresses,
+			vec![[1u8; 32], [2u8; 32]]
+		);
+
 		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 400);
