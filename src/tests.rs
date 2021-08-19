@@ -407,7 +407,7 @@ fn update_address_works() {
 }
 
 #[test]
-fn update_address_with_existing_address_works() {
+fn update_address_with_existing_address_fails() {
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
@@ -432,27 +432,7 @@ fn update_address_with_existing_address_works() {
 		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_ok!(Crowdloan::claim(Origin::signed(2)));
-		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
-
-		assert!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).is_some());
-
-		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
-		assert_noop!(
-			Crowdloan::claim(Origin::signed(1)),
-			Error::<Test>::NoAssociatedClaim
-		);
-		roll_to(6);
-		assert_ok!(Crowdloan::claim(Origin::signed(2)));
-		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 600);
-		let expected = vec![
-			crate::Event::InitialPaymentMade(1, 100),
-			crate::Event::InitialPaymentMade(2, 100),
-			crate::Event::RewardsPaid(1, 100),
-			crate::Event::RewardsPaid(2, 100),
-			crate::Event::RewardAddressUpdated(1, 2),
-			crate::Event::RewardsPaid(2, 200),
-		];
-		assert_eq!(events(), expected);
+		assert_noop!(Crowdloan::update_reward_address(Origin::signed(1), 2), Error::<Test>::AlreadyAssociated);
 	});
 }
 

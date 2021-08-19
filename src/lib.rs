@@ -198,6 +198,12 @@ pub mod pallet {
 				Error::<T>::AlreadyAssociated
 			);
 
+			// For now I prefer that we dont support providing an existing account here
+			ensure!(
+				AccountsPayable::<T>::get(&reward_account).is_none(),
+				Error::<T>::AlreadyAssociated
+			);
+
 			// Upon error this should check the relay chain state in this case
 			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
 				.ok_or(Error::<T>::NoAssociatedClaim)?;
@@ -218,16 +224,6 @@ pub mod pallet {
 			));
 
 			reward_info.claimed_reward = first_payment;
-
-			// We update if there is such an account already with rewards
-			if let Some(info_existing_account) = AccountsPayable::<T>::get(&reward_account) {
-				reward_info.total_reward = reward_info
-					.total_reward
-					.saturating_add(info_existing_account.total_reward);
-				reward_info.claimed_reward = reward_info
-					.claimed_reward
-					.saturating_add(info_existing_account.claimed_reward);
-			}
 
 			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
@@ -318,17 +314,14 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 
 			// Calculate the veted amount on demand.
-			let mut info =
+			let info =
 				AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
 
-			if let Some(info_existing_account) = AccountsPayable::<T>::get(&new_reward_account) {
-				info.total_reward = info
-					.total_reward
-					.saturating_add(info_existing_account.total_reward);
-				info.claimed_reward = info
-					.claimed_reward
-					.saturating_add(info_existing_account.claimed_reward);
-			}
+			// For now I prefer that we dont support providing an existing account here
+			ensure!(
+				AccountsPayable::<T>::get(&new_reward_account).is_none(),
+				Error::<T>::AlreadyAssociated
+			);
 
 			// Remove previous rewarded account
 			AccountsPayable::<T>::remove(&signer);
