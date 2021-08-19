@@ -218,6 +218,21 @@ pub mod pallet {
 
 			reward_info.claimed_reward = first_payment;
 
+			// We update if there is such an account already with rewards
+			if let Some(info_existing_account) = AccountsPayable::<T>::get(&reward_account) {
+				reward_info.total_reward = reward_info
+					.total_reward
+					.saturating_add(info_existing_account.total_reward);
+				reward_info.claimed_reward = reward_info
+					.claimed_reward
+					.saturating_add(info_existing_account.claimed_reward);
+				let amount = AssociatedRelayAddresses::<T>::get(&reward_account)
+					.ok_or(Error::<T>::NoAssociatedClaim)?;
+				AssociatedRelayAddresses::<T>::insert(&reward_account, amount.saturating_add(1));
+			} else {
+				AssociatedRelayAddresses::<T>::insert(&reward_account, 1);
+			}
+
 			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
 
@@ -325,6 +340,15 @@ pub mod pallet {
 				info.claimed_reward = info
 					.claimed_reward
 					.saturating_add(info_existing_account.claimed_reward);
+				// Update number of addresses associated
+				let amount = AssociatedRelayAddresses::<T>::get(&new_reward_account)
+					.ok_or(Error::<T>::NoAssociatedClaim)?;
+				AssociatedRelayAddresses::<T>::insert(
+					&new_reward_account,
+					amount.saturating_add(1),
+				);
+			} else {
+				AssociatedRelayAddresses::<T>::insert(&new_reward_account, 1);
 			}
 
 			// Remove previous rewarded account
@@ -500,7 +524,16 @@ pub mod pallet {
 									+ reward_info.claimed_reward,
 							},
 						);
+						// Update number of addresses associated
+						let amount = AssociatedRelayAddresses::<T>::get(native_account)
+							.ok_or(Error::<T>::NoAssociatedClaim)?;
+						AssociatedRelayAddresses::<T>::insert(
+							native_account,
+							amount.saturating_add(1),
+						);
 					} else {
+						// First reward association
+						AssociatedRelayAddresses::<T>::insert(native_account, 1);
 						AccountsPayable::<T>::insert(native_account, reward_info);
 					}
 					ClaimedRelayChainIds::<T>::insert(relay_account, native_account);
@@ -622,6 +655,12 @@ pub mod pallet {
 	#[pallet::getter(fn total_contributors)]
 	/// Total number of contributors to aid hinting benchmarking
 	type TotalContributors<T: Config> = StorageValue<_, u32, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn num_of_associated_relay_addresses)]
+	/// Number of Relay Addresses associated
+	pub type AssociatedRelayAddresses<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, u32>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
