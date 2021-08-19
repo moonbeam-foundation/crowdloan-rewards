@@ -97,6 +97,13 @@ fn proving_assignation_works() {
 		));
 		// 4 is not payable first
 		assert!(Crowdloan::accounts_payable(&3).is_none());
+		assert_eq!(
+			Crowdloan::accounts_payable(&1)
+				.unwrap()
+				.contributed_relay_addresses,
+			vec![[1u8; 32]]
+		);
+
 		roll_to(4);
 		// Signature is wrong, prove fails
 		assert_noop!(
@@ -115,6 +122,7 @@ fn proving_assignation_works() {
 			pairs[0].public().into(),
 			signature.clone()
 		));
+
 		// Signature is right, but address already claimed
 		assert_noop!(
 			Crowdloan::associate_native_identity(
@@ -127,6 +135,13 @@ fn proving_assignation_works() {
 		);
 		// now three is payable
 		assert!(Crowdloan::accounts_payable(&3).is_some());
+		assert_eq!(
+			Crowdloan::accounts_payable(&3)
+				.unwrap()
+				.contributed_relay_addresses,
+			vec![*pairs[0].public().as_array_ref()]
+		);
+
 		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_some());
 
@@ -164,6 +179,13 @@ fn initializing_multi_relay_to_single_native_address_works() {
 		));
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
+		assert_eq!(
+			Crowdloan::accounts_payable(&1)
+				.unwrap()
+				.contributed_relay_addresses,
+			vec![[1u8; 32], [2u8; 32]]
+		);
+
 		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 400);
@@ -404,7 +426,7 @@ fn update_address_works() {
 }
 
 #[test]
-fn update_address_with_existing_address_works() {
+fn update_address_with_existing_address_fails() {
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
@@ -429,24 +451,10 @@ fn update_address_with_existing_address_works() {
 		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_ok!(Crowdloan::claim(Origin::signed(2)));
-		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
-		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
 		assert_noop!(
-			Crowdloan::claim(Origin::signed(1)),
-			Error::<Test>::NoAssociatedClaim
+			Crowdloan::update_reward_address(Origin::signed(1), 2),
+			Error::<Test>::AlreadyAssociated
 		);
-		roll_to(6);
-		assert_ok!(Crowdloan::claim(Origin::signed(2)));
-		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 600);
-		let expected = vec![
-			crate::Event::InitialPaymentMade(1, 100),
-			crate::Event::InitialPaymentMade(2, 100),
-			crate::Event::RewardsPaid(1, 100),
-			crate::Event::RewardsPaid(2, 100),
-			crate::Event::RewardAddressUpdated(1, 2),
-			crate::Event::RewardsPaid(2, 200),
-		];
-		assert_eq!(events(), expected);
 	});
 }
 

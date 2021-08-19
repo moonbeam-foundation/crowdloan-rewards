@@ -64,7 +64,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialize_reward_vec(x: u32) -> Weight {
 		(50_432_000 as Weight)
 			// Standard Error: 21_000
-			.saturating_add((72_298_000 as Weight).saturating_mul(x as Weight))
+			.saturating_add((143_109_000 as Weight).saturating_mul(x as Weight))
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().reads((4 as Weight).saturating_mul(x as Weight)))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
@@ -87,7 +87,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	fn associate_native_identity() -> Weight {
 		(152_997_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
+			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 }
@@ -97,7 +97,7 @@ impl WeightInfo for () {
 	fn initialize_reward_vec(x: u32) -> Weight {
 		(50_432_000 as Weight)
 			// Standard Error: 21_000
-			.saturating_add((72_298_000 as Weight).saturating_mul(x as Weight))
+			.saturating_add((143_109_000 as Weight).saturating_mul(x as Weight))
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().reads((4 as Weight).saturating_mul(x as Weight)))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
@@ -120,7 +120,7 @@ impl WeightInfo for () {
 	}
 	fn associate_native_identity() -> Weight {
 		(152_997_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
+			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
 }

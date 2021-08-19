@@ -87,9 +87,10 @@ pub mod pallet {
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec::Vec;
+	use sp_std::vec;
 
-	/// The Author Filter pallet
 	#[pallet::pallet]
+	// The crowdloan rewards pallet
 	pub struct Pallet<T>(PhantomData<T>);
 
 	pub const PALLET_ID: PalletId = PalletId(*b"Crowdloa");
@@ -139,6 +140,7 @@ pub mod pallet {
 	pub struct RewardInfo<T: Config> {
 		pub total_reward: BalanceOf<T>,
 		pub claimed_reward: BalanceOf<T>,
+		pub contributed_relay_addresses: Vec<T::RelayChainAccountId>,
 	}
 
 	// This hook is in charge of initializing the relay chain height at the first block of the parachain
@@ -194,6 +196,12 @@ pub mod pallet {
 			// We ensure the relay chain id wast not yet associated to avoid multi-claiming
 			ensure!(
 				ClaimedRelayChainIds::<T>::get(&relay_account).is_none(),
+				Error::<T>::AlreadyAssociated
+			);
+
+			// For now I prefer that we dont support providing an existing account here
+			ensure!(
+				AccountsPayable::<T>::get(&reward_account).is_none(),
 				Error::<T>::AlreadyAssociated
 			);
 
@@ -307,17 +315,14 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 
 			// Calculate the veted amount on demand.
-			let mut info =
+			let info =
 				AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
 
-			if let Some(info_existing_account) = AccountsPayable::<T>::get(&new_reward_account) {
-				info.total_reward = info
-					.total_reward
-					.saturating_add(info_existing_account.total_reward);
-				info.claimed_reward = info
-					.claimed_reward
-					.saturating_add(info_existing_account.claimed_reward);
-			}
+			// For now I prefer that we dont support providing an existing account here
+			ensure!(
+				AccountsPayable::<T>::get(&new_reward_account).is_none(),
+				Error::<T>::AlreadyAssociated
+			);
 
 			// Remove previous rewarded account
 			AccountsPayable::<T>::remove(&signer);
@@ -465,16 +470,22 @@ pub mod pallet {
 				};
 
 				// We need to calculate the vesting based on the relay block number
-				let reward_info = RewardInfo {
+				let mut reward_info = RewardInfo {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
+					contributed_relay_addresses: vec![relay_account.clone()],
 				};
 
 				current_initialized_rewards += *reward - initial_payment;
 				total_contributors += 1;
 
 				if let Some(native_account) = native_account {
-					if let Some(inserted_reward_info) = AccountsPayable::<T>::get(native_account) {
+					if let Some(mut inserted_reward_info) =
+						AccountsPayable::<T>::get(native_account)
+					{
+						inserted_reward_info
+							.contributed_relay_addresses
+							.append(&mut reward_info.contributed_relay_addresses);
 						// the native account has already some rewards in, we add the new ones
 						AccountsPayable::<T>::insert(
 							native_account,
@@ -483,9 +494,12 @@ pub mod pallet {
 									+ reward_info.total_reward,
 								claimed_reward: inserted_reward_info.claimed_reward
 									+ reward_info.claimed_reward,
+								contributed_relay_addresses: inserted_reward_info
+									.contributed_relay_addresses,
 							},
 						);
 					} else {
+						// First reward association
 						AccountsPayable::<T>::insert(native_account, reward_info);
 					}
 					ClaimedRelayChainIds::<T>::insert(relay_account, ());
