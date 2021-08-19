@@ -77,7 +77,6 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
-
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
@@ -116,7 +115,6 @@ fn proving_assignation_works() {
 			),
 			Error::<Test>::InvalidClaimSignature
 		);
-
 		// Signature is right, prove passes
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
@@ -411,7 +409,6 @@ fn update_address_works() {
 			Error::<Test>::NoAssociatedClaim
 		);
 		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 8));
-
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 200);
 		roll_to(6);
 		assert_ok!(Crowdloan::claim(Origin::signed(8)));
@@ -489,9 +486,8 @@ fn update_address_with_existing_with_multi_address_works() {
 
 		// We make sure all rewards go to the new address
 		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
-
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
-
+		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().total_reward, 1000);
 		assert_noop!(
 			Crowdloan::claim(Origin::signed(1)),
 			Error::<Test>::NoAssociatedClaim
