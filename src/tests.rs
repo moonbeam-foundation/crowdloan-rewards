@@ -58,8 +58,8 @@ fn geneses() {
 		assert!(Crowdloan::accounts_payable(&5).is_none());
 
 		// claimed address existence
-		assert_eq!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).unwrap(), 1);
-		assert_eq!(Crowdloan::claimed_relay_chain_ids(&[2u8; 32]).unwrap(), 2);
+		assert!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).is_some());
+		assert!(Crowdloan::claimed_relay_chain_ids(&[2u8; 32]).is_some());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_none());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[1].public().as_array_ref()).is_none());
 		assert!(Crowdloan::claimed_relay_chain_ids(pairs[2].public().as_array_ref()).is_none());
@@ -128,10 +128,7 @@ fn proving_assignation_works() {
 		// now three is payable
 		assert!(Crowdloan::accounts_payable(&3).is_some());
 		assert!(Crowdloan::unassociated_contributions(pairs[0].public().as_array_ref()).is_none());
-		assert_eq!(
-			Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).unwrap(),
-			3
-		);
+		assert!(Crowdloan::claimed_relay_chain_ids(pairs[0].public().as_array_ref()).is_some());
 
 		let expected = vec![
 			crate::Event::InitialPaymentMade(1, 100),
@@ -389,12 +386,9 @@ fn update_address_works() {
 			Crowdloan::claim(Origin::signed(8)),
 			Error::<Test>::NoAssociatedClaim
 		);
-		assert_ok!(Crowdloan::update_reward_address(
-			Origin::signed(1),
-			8,
-			[1u8; 32].into()
-		));
-		assert_eq!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).unwrap(), 8);
+		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 8));
+
+		assert!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).is_some());
 
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 200);
 		roll_to(6);
@@ -405,7 +399,7 @@ fn update_address_works() {
 			crate::Event::InitialPaymentMade(1, 100),
 			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::RewardsPaid(1, 100),
-			crate::Event::RewardAddressUpdated([1u8; 32].into(), 1, 8),
+			crate::Event::RewardAddressUpdated(1, 8),
 			crate::Event::RewardsPaid(8, 100),
 		];
 		assert_eq!(events(), expected);
@@ -438,12 +432,9 @@ fn update_address_with_existing_address_works() {
 		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_ok!(Crowdloan::claim(Origin::signed(2)));
-		assert_ok!(Crowdloan::update_reward_address(
-			Origin::signed(1),
-			2,
-			[1u8; 32].into()
-		));
-		assert_eq!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).unwrap(), 2);
+		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
+
+		assert!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).is_some());
 
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
 		assert_noop!(
@@ -458,7 +449,7 @@ fn update_address_with_existing_address_works() {
 			crate::Event::InitialPaymentMade(2, 100),
 			crate::Event::RewardsPaid(1, 100),
 			crate::Event::RewardsPaid(2, 100),
-			crate::Event::RewardAddressUpdated([1u8; 32].into(), 1, 2),
+			crate::Event::RewardAddressUpdated(1, 2),
 			crate::Event::RewardsPaid(2, 200),
 		];
 		assert_eq!(events(), expected);
@@ -492,12 +483,8 @@ fn update_address_with_existing_with_multi_address_works() {
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 
 		// We make sure all rewards go to the new address
-		assert_ok!(Crowdloan::update_reward_address(
-			Origin::signed(1),
-			2,
-			[1u8; 32].into()
-		));
-		assert_eq!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).unwrap(), 2);
+		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2,));
+		assert!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).is_some());
 
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().total_reward, 1000);

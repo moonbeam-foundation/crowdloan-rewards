@@ -301,10 +301,10 @@ benchmarks! {
 		// The new user
 		let new_user = create_funded_user::<T>("user", SEED+1, 0u32.into());
 
-	}:  _(RawOrigin::Signed(caller.clone()), new_user.clone(), relay_account.clone())
+	}:  _(RawOrigin::Signed(caller.clone()), new_user.clone())
 	verify {
 		assert_eq!(Pallet::<T>::accounts_payable(&new_user).unwrap().total_reward, (100u32.into()));
-		assert_eq!(Pallet::<T>::claimed_relay_chain_ids(&relay_account).unwrap(), new_user);
+		assert!(Pallet::<T>::claimed_relay_chain_ids(&relay_account).is_some());
 	}
 
 	associate_native_identity {

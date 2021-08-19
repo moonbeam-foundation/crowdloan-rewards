@@ -139,6 +139,7 @@ pub mod pallet {
 	pub struct RewardInfo<T: Config> {
 		pub total_reward: BalanceOf<T>,
 		pub claimed_reward: BalanceOf<T>,
+		pub contributed_relay_addresses: Vec<T::RelayChainAccountId>,
 	}
 
 	// This hook is in charge of initializing the relay chain height at the first block of the parachain
@@ -226,11 +227,6 @@ pub mod pallet {
 				reward_info.claimed_reward = reward_info
 					.claimed_reward
 					.saturating_add(info_existing_account.claimed_reward);
-				let amount = AssociatedRelayAddresses::<T>::get(&reward_account)
-					.ok_or(Error::<T>::NoAssociatedClaim)?;
-				AssociatedRelayAddresses::<T>::insert(&reward_account, amount.saturating_add(1));
-			} else {
-				AssociatedRelayAddresses::<T>::insert(&reward_account, 1);
 			}
 
 			// Insert on payable
@@ -240,7 +236,7 @@ pub mod pallet {
 			<UnassociatedContributions<T>>::remove(&relay_account);
 
 			// Insert in mapping
-			ClaimedRelayChainIds::<T>::insert(&relay_account, &reward_account);
+			ClaimedRelayChainIds::<T>::insert(&relay_account, ());
 
 			// Emit Event
 			Self::deposit_event(Event::NativeIdentityAssociated(
@@ -318,16 +314,8 @@ pub mod pallet {
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
 			new_reward_account: T::AccountId,
-			relay_account: T::RelayChainAccountId,
 		) -> DispatchResultWithPostInfo {
 			let signer = ensure_signed(origin)?;
-
-			// We need to ensure that the claimed_relay_chain_ids mapping contains the right data
-			let current_address = ClaimedRelayChainIds::<T>::get(&relay_account)
-				.ok_or(Error::<T>::NoAssociatedClaim)?;
-
-			// This ensures the lease ending block is bigger than the init relay block
-			ensure!(current_address == signer, Error::<T>::NonValidContributor);
 
 			// Calculate the veted amount on demand.
 			let mut info =
@@ -340,15 +328,6 @@ pub mod pallet {
 				info.claimed_reward = info
 					.claimed_reward
 					.saturating_add(info_existing_account.claimed_reward);
-				// Update number of addresses associated
-				let amount = AssociatedRelayAddresses::<T>::get(&new_reward_account)
-					.ok_or(Error::<T>::NoAssociatedClaim)?;
-				AssociatedRelayAddresses::<T>::insert(
-					&new_reward_account,
-					amount.saturating_add(1),
-				);
-			} else {
-				AssociatedRelayAddresses::<T>::insert(&new_reward_account, 1);
 			}
 
 			// Remove previous rewarded account
@@ -357,15 +336,8 @@ pub mod pallet {
 			// Update new rewarded acount
 			AccountsPayable::<T>::insert(&new_reward_account, &info);
 
-			// Update new rewarded acount
-			ClaimedRelayChainIds::<T>::insert(&relay_account, &new_reward_account);
-
 			// Emit event
-			Self::deposit_event(Event::RewardAddressUpdated(
-				relay_account,
-				signer,
-				new_reward_account,
-			));
+			Self::deposit_event(Event::RewardAddressUpdated(signer, new_reward_account));
 
 			Ok(Default::default())
 		}
@@ -507,13 +479,19 @@ pub mod pallet {
 				let reward_info = RewardInfo {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
+					contributed_relay_addresses: vec![relay_account.clone()],
 				};
 
 				current_initialized_rewards += *reward - initial_payment;
 				total_contributors += 1;
 
 				if let Some(native_account) = native_account {
-					if let Some(inserted_reward_info) = AccountsPayable::<T>::get(native_account) {
+					if let Some(mut inserted_reward_info) =
+						AccountsPayable::<T>::get(native_account)
+					{
+						inserted_reward_info
+							.contributed_relay_addresses
+							.push(relay_account.clone());
 						// the native account has already some rewards in, we add the new ones
 						AccountsPayable::<T>::insert(
 							native_account,
@@ -522,21 +500,16 @@ pub mod pallet {
 									+ reward_info.total_reward,
 								claimed_reward: inserted_reward_info.claimed_reward
 									+ reward_info.claimed_reward,
+								contributed_relay_addresses: inserted_reward_info
+									.contributed_relay_addresses,
 							},
-						);
-						// Update number of addresses associated
-						let amount = AssociatedRelayAddresses::<T>::get(native_account)
-							.ok_or(Error::<T>::NoAssociatedClaim)?;
-						AssociatedRelayAddresses::<T>::insert(
-							native_account,
-							amount.saturating_add(1),
 						);
 					} else {
 						// First reward association
-						AssociatedRelayAddresses::<T>::insert(native_account, 1);
 						AccountsPayable::<T>::insert(native_account, reward_info);
 					}
-					ClaimedRelayChainIds::<T>::insert(relay_account, native_account);
+
+					ClaimedRelayChainIds::<T>::insert(relay_account, ());
 				} else {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
 				}
@@ -626,7 +599,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn claimed_relay_chain_ids)]
 	pub type ClaimedRelayChainIds<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, T::AccountId>;
+		StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, ()>;
 	#[pallet::storage]
 	#[pallet::getter(fn unassociated_contributions)]
 	pub type UnassociatedContributions<T: Config> =
@@ -656,12 +629,6 @@ pub mod pallet {
 	/// Total number of contributors to aid hinting benchmarking
 	type TotalContributors<T: Config> = StorageValue<_, u32, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn num_of_associated_relay_addresses)]
-	/// Number of Relay Addresses associated
-	pub type AssociatedRelayAddresses<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, u32>;
-
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -674,7 +641,7 @@ pub mod pallet {
 		/// Data is the account getting paid and the amount of rewards paid.
 		RewardsPaid(T::AccountId, BalanceOf<T>),
 		/// A contributor has updated the reward address.
-		RewardAddressUpdated(T::RelayChainAccountId, T::AccountId, T::AccountId),
+		RewardAddressUpdated(T::AccountId, T::AccountId),
 		/// When initializing the reward vec an already initialized account was found
 		InitializedAlreadyInitializedAccount(
 			T::RelayChainAccountId,
