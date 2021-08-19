@@ -430,7 +430,10 @@ fn update_address_with_existing_address_fails() {
 		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_ok!(Crowdloan::claim(Origin::signed(2)));
-		assert_noop!(Crowdloan::update_reward_address(Origin::signed(1), 2), Error::<Test>::AlreadyAssociated);
+		assert_noop!(
+			Crowdloan::update_reward_address(Origin::signed(1), 2),
+			Error::<Test>::AlreadyAssociated
+		);
 	});
 }
 
@@ -461,8 +464,7 @@ fn update_address_with_existing_with_multi_address_works() {
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 
 		// We make sure all rewards go to the new address
-		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2,));
-		assert!(Crowdloan::claimed_relay_chain_ids(&[1u8; 32]).is_some());
+		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 2));
 
 		assert_eq!(Crowdloan::accounts_payable(&2).unwrap().claimed_reward, 400);
 

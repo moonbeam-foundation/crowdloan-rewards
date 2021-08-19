@@ -314,8 +314,7 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 
 			// Calculate the veted amount on demand.
-			let info =
-				AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
+			let info = AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
 
 			// For now I prefer that we dont support providing an existing account here
 			ensure!(
@@ -501,7 +500,6 @@ pub mod pallet {
 						// First reward association
 						AccountsPayable::<T>::insert(native_account, reward_info);
 					}
-
 					ClaimedRelayChainIds::<T>::insert(relay_account, ());
 				} else {
 					UnassociatedContributions::<T>::insert(relay_account, reward_info);
