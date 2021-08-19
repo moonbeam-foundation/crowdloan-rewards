@@ -558,8 +558,6 @@ pub mod pallet {
 		TooManyContributors,
 		/// Provided vesting period is not valid
 		VestingPeriodNonValid,
-		/// Provided a non valid contributor
-		NonValidContributor,
 	}
 
 	#[pallet::genesis_config]
