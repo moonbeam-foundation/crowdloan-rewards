@@ -470,7 +470,7 @@ pub mod pallet {
 				};
 
 				// We need to calculate the vesting based on the relay block number
-				let reward_info = RewardInfo {
+				let mut reward_info = RewardInfo {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
 					contributed_relay_addresses: vec![relay_account.clone()],
@@ -485,7 +485,7 @@ pub mod pallet {
 					{
 						inserted_reward_info
 							.contributed_relay_addresses
-							.push(relay_account.clone());
+							.append(&mut reward_info.contributed_relay_addresses);
 						// the native account has already some rewards in, we add the new ones
 						AccountsPayable::<T>::insert(
 							native_account,
