@@ -364,6 +364,8 @@ benchmarks! {
 
 		// The first reward account that will associate the account
 		let first_reward_account: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+
+		// The account to which we will update our reward account
 		let second_reward_account: T::AccountId = create_funded_user::<T>("user", SEED-1, 100u32.into());
 
 		let mut proofs: Vec<(T::RelayChainAccountId, MultiSignature)> = Vec::new();
@@ -378,7 +380,7 @@ benchmarks! {
 			proofs.push((relay_account.into(), signature));
 		}
 
-		// Create X contributor
+		// Create x contributors
 		// All of them map to the same account
 		let mut contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> = Vec::new();
 		for (relay_account, _) in proofs.clone() {
