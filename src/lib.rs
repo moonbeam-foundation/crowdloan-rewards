@@ -272,11 +272,7 @@ pub mod pallet {
 
 			let reward_info = AccountsPayable::<T>::get(&previous_account)
 				.ok_or(Error::<T>::NoAssociatedClaim)?;
-			ensure!(
-				proofs.len() == reward_info.contributed_relay_addresses.len(),
-				Error::<T>::InvalidNumberOfProofs
-			);
-
+			
 			Self::verify_signatures(proofs, reward_info.clone(), payload)?;
 
 			// Remove fromon payable
@@ -641,8 +637,6 @@ pub mod pallet {
 		TooManyContributors,
 		/// Provided vesting period is not valid
 		VestingPeriodNonValid,
-		/// Provided vesting period is not valid
-		InvalidNumberOfProofs,
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided a wrong signature
 		NonContributedAddressProvided,
