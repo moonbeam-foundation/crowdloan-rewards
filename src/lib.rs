@@ -271,12 +271,7 @@ pub mod pallet {
 			let mut payload = reward_account.encode();
 			payload.append(&mut previous_account.encode());
 
-			// Check the proof:
-			// 1. Is signed by an actual unassociated contributor
-			// 2. Signs a valid native identity
-			// Check the proof. The Proof consists of a Signature of the rewarded account with the
-			// claimer key
-
+			// Get the reward info for the account to be changed
 			let reward_info = AccountsPayable::<T>::get(&previous_account)
 				.ok_or(Error::<T>::NoAssociatedClaim)?;
 
@@ -580,6 +575,11 @@ pub mod pallet {
 			reward_info: RewardInfo<T>,
 			payload: Vec<u8>,
 		) -> DispatchResult {
+			// The proofs should
+			// 1. be signed by contributors to this address, otherwise they are not counted
+			// 2. Signs a valid native identity
+			// 3. The sum of the valid proofs needs to be bigger than UnsifficientNumberOfValidProofs
+
 			// I use a map here for faster lookups
 			let mut voted: BTreeMap<T::RelayChainAccountId, ()> = BTreeMap::new();
 			for (relay_account, signature) in proofs {
