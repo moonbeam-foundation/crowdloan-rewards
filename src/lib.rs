@@ -114,6 +114,7 @@ pub mod pallet {
 		type MinimumReward: Get<BalanceOf<Self>>;
 		/// A fraction representing the percentage of proofs
 		/// that need to be presented to change a reward address through the relay keys
+		#[pallet::constant]
 		type RewardAddressRelayVoteThreshold: Get<Perbill>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
@@ -164,17 +165,9 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Associate a native rewards_destination identity with a crowdloan contribution.
 		///
-		/// This is an unsigned call because the caller may not have any funds to pay fees with.
-		/// This is inspired by Polkadot's claims pallet:
-		/// https://github.com/paritytech/polkadot/blob/master/runtime/common/src/claims.rs
-		///
-		/// The contributor needs to issue an additional addmemo transaction if it wants to receive
-		/// the reward in a parachain native account. For the moment I will leave this function here
-		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
-		/// state of the relay chain, we should first check whether that memo field exists in the
-		/// contribution
-		/// Weight argument is 0 since it depends on how the storage trie is composed
-		/// Once we have the number of contributors, we can probably add such a weight here
+		/// The caller needs to provide the unassociated relay account and a proof to succeed
+		/// with the association
+		/// The proof is nothing but a signature over the reward_address using the relay keys
 		#[pallet::weight(T::WeightInfo::associate_native_identity())]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
@@ -248,19 +241,10 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// Associate a native rewards_destination identity with a crowdloan contribution.
+		/// Change reward account by submitting proofs from relay accounts
 		///
-		/// This is an unsigned call because the caller may not have any funds to pay fees with.
-		/// This is inspired by Polkadot's claims pallet:
-		/// https://github.com/paritytech/polkadot/blob/master/runtime/common/src/claims.rs
-		///
-		/// The contributor needs to issue an additional addmemo transaction if it wants to receive
-		/// the reward in a parachain native account. For the moment I will leave this function here
-		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
-		/// state of the relay chain, we should first check whether that memo field exists in the
-		/// contribution
-		/// Weight argument is 0 since it depends on how the storage trie is composed
-		/// Once we have the number of contributors, we can probably add such a weight here
+		/// The number of valid proofs needs to be bigger than 'RewardAddressRelayVoteThreshold'
+		/// The account to be changed needs to be submitted as 'previous_account'
 		#[pallet::weight(T::WeightInfo::associate_native_identity())]
 		pub fn change_association_with_relay_keys(
 			origin: OriginFor<T>,
@@ -294,6 +278,9 @@ pub mod pallet {
 			);
 
 			Self::verify_signatures(proofs, reward_info.clone(), payload)?;
+
+			// Remove fromon payable
+			AccountsPayable::<T>::remove(&previous_account);
 
 			// Insert on payable
 			AccountsPayable::<T>::insert(&reward_account, &reward_info);
@@ -366,9 +353,7 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// Update reward address. To determine whether its something we want to keep
-		/// Weight argument is 0 since it depends on how the storage trie is composed
-		/// Once we have the number of contributors, we can probably add such a weight here
+		/// Update reward address, proving that the caller owns the current native key
 		#[pallet::weight(T::WeightInfo::update_reward_address())]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
@@ -448,9 +433,9 @@ pub mod pallet {
 
 			Ok(Default::default())
 		}
+
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
-		/// We can change this behavior to check this beforehand if we prefer
-		/// We check that the number of contributors inserted is less than T::MaxInitContributors::get()
+		/// This does not enforce any checks other than making sure we dont go over funds
 		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -584,7 +569,7 @@ pub mod pallet {
 		pub fn pot() -> BalanceOf<T> {
 			T::RewardCurrency::free_balance(&Self::account_id())
 		}
-		/// We should verify signature
+		/// Verify a set of signatures made with relay chain accounts
 		fn verify_signatures(
 			proofs: Vec<(T::RelayChainAccountId, MultiSignature)>,
 			reward_info: RewardInfo<T>,
