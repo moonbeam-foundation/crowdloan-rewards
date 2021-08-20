@@ -639,8 +639,7 @@ pub mod pallet {
 		TooManyContributors,
 		/// Provided vesting period is not valid
 		VestingPeriodNonValid,
-		/// User trying to associate a native identity with a relay chain identity for posterior
-		/// reward claiming provided a wrong signature
+		/// User provided a signature from a non-contributor relay account
 		NonContributedAddressProvided,
 		/// User submitted an unsifficient number of proofs to change the reward address
 		UnsifficientNumberOfValidProofs,
