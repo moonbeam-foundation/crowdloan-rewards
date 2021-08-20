@@ -183,13 +183,14 @@ pub mod pallet {
 			// Check the proof. The Proof consists of a Signature of the rewarded account with the
 			// claimer key
 
-			let payload = reward_account.encode();
-			ensure!(
-				proof.verify(payload.as_slice(), &relay_account.clone().into()),
-				Error::<T>::InvalidClaimSignature
-			);
+			// The less costly checks will go first
+
+			// The relay account should be unassociated
+			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
+				.ok_or(Error::<T>::NoAssociatedClaim)?;
 
 			// We ensure the relay chain id wast not yet associated to avoid multi-claiming
+			// We dont need this right now, as it will always be true if the above check is true
 			ensure!(
 				ClaimedRelayChainIds::<T>::get(&relay_account).is_none(),
 				Error::<T>::AlreadyAssociated
@@ -201,9 +202,14 @@ pub mod pallet {
 				Error::<T>::AlreadyAssociated
 			);
 
-			// Upon error this should check the relay chain state in this case
-			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
-				.ok_or(Error::<T>::NoAssociatedClaim)?;
+			let payload = reward_account.encode();
+
+			// Check the signature
+			Self::verify_signatures(
+				vec![(relay_account.clone(), proof)],
+				reward_info.clone(),
+				payload,
+			)?;
 
 			// Make the first payment
 			let first_payment = T::InitializationPayment::get() * reward_info.total_reward;

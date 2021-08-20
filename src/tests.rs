@@ -77,6 +77,7 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
+	let alread_associated_signature: MultiSignature = pairs[0].sign(&1u64.encode()).into();
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
@@ -115,6 +116,18 @@ fn proving_assignation_works() {
 			),
 			Error::<Test>::InvalidClaimSignature
 		);
+
+		// Signature is right, but address already claimed
+		assert_noop!(
+			Crowdloan::associate_native_identity(
+				Origin::signed(4),
+				1,
+				pairs[0].public().into(),
+				alread_associated_signature
+			),
+			Error::<Test>::AlreadyAssociated
+		);
+
 		// Signature is right, prove passes
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
@@ -123,7 +136,7 @@ fn proving_assignation_works() {
 			signature.clone()
 		));
 
-		// Signature is right, but address already claimed
+		// Signature is right, but relay address is no longer on unassociated
 		assert_noop!(
 			Crowdloan::associate_native_identity(
 				Origin::signed(4),
@@ -131,8 +144,9 @@ fn proving_assignation_works() {
 				pairs[0].public().into(),
 				signature
 			),
-			Error::<Test>::AlreadyAssociated
+			Error::<Test>::NoAssociatedClaim
 		);
+
 		// now three is payable
 		assert!(Crowdloan::accounts_payable(&3).is_some());
 		assert_eq!(
