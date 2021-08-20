@@ -272,7 +272,7 @@ pub mod pallet {
 
 			let reward_info = AccountsPayable::<T>::get(&previous_account)
 				.ok_or(Error::<T>::NoAssociatedClaim)?;
-			
+
 			Self::verify_signatures(proofs, reward_info.clone(), payload)?;
 
 			// Remove fromon payable
@@ -431,7 +431,9 @@ pub mod pallet {
 		}
 
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
+
 		/// This does not enforce any checks other than making sure we dont go over funds
+		/// complete_initialization should perform any additional
 		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -598,7 +600,7 @@ pub mod pallet {
 					voted.len() as u32,
 					reward_info.contributed_relay_addresses.len() as u32
 				) >= T::RewardAddressRelayVoteThreshold::get(),
-				Error::<T>::NonContributedAddressProvided
+				Error::<T>::UnsifficientNumberOfValidProofs
 			);
 			Ok(())
 		}
@@ -640,6 +642,8 @@ pub mod pallet {
 		/// User trying to associate a native identity with a relay chain identity for posterior
 		/// reward claiming provided a wrong signature
 		NonContributedAddressProvided,
+		/// User submitted an unsifficient number of proofs to change the reward address
+		UnsifficientNumberOfValidProofs,
 	}
 
 	#[pallet::genesis_config]
