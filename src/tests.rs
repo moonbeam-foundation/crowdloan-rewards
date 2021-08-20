@@ -15,6 +15,7 @@
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Unit testing
+
 use crate::*;
 use frame_support::dispatch::{DispatchError, Dispatchable};
 use frame_support::{assert_noop, assert_ok};
@@ -897,5 +898,86 @@ fn test_initialization_errors() {
 			Crowdloan::complete_initialization(Origin::root(), init_block),
 			Error::<Test>::RewardVecAlreadyInitialized
 		);
+	});
+}
+
+#[test]
+fn test_relay_signatures_can_change_reward_addresses() {
+	empty().execute_with(|| {
+		// 5 relay keys
+		let pairs = get_ed25519_pairs(5);
+
+		// The init relay block gets inserted
+		roll_to(2);
+		let init_block = Crowdloan::init_relay_block();
+
+		// We will have all pointint to the same reward account
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				(pairs[0].public().into(), Some(1), 500u32.into()),
+				(pairs[1].public().into(), Some(1), 500u32.into()),
+				(pairs[2].public().into(), Some(1), 500u32.into()),
+				(pairs[3].public().into(), Some(1), 500u32.into()),
+				(pairs[4].public().into(), Some(1), 500u32.into())
+			],
+		));
+
+		// Complete
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		let reward_info = Crowdloan::accounts_payable(&1).unwrap();
+
+		// We should have all of them as contributors
+		for pair in pairs.clone() {
+			assert!(reward_info
+				.contributed_relay_addresses
+				.contains(&pair.public().into()))
+		}
+
+		// Threshold is set to 50%, so we need at least 3 votes to pass
+		// Let's make sure that we dont pass with 2
+		let mut payload = 2u64.encode();
+		payload.append(&mut 1u64.encode());
+		let mut insufficient_proofs: Vec<([u8; 32], MultiSignature)> = vec![];
+		for i in 0..2 {
+			insufficient_proofs.push((pairs[i].public().into(), pairs[i].sign(&payload).into()));
+		}
+
+		assert_noop!(
+			Crowdloan::change_association_with_relay_keys(
+				Origin::signed(1),
+				2,
+				1,
+				insufficient_proofs.clone()
+			),
+			Error::<Test>::UnsifficientNumberOfValidProofs
+		);
+
+		// With three votes we should passs
+		let mut sufficient_proofs = insufficient_proofs.clone();
+
+		// We push one more
+		sufficient_proofs.push((pairs[2].public().into(), pairs[2].sign(&payload).into()));
+
+		// This time should pass
+		assert_ok!(Crowdloan::change_association_with_relay_keys(
+			Origin::signed(1),
+			2,
+			1,
+			sufficient_proofs.clone()
+		));
+
+		// 1 should no longer be payable
+		assert!(Crowdloan::accounts_payable(&1).is_none());
+
+		// 2 should be now payable
+		let reward_info_2 = Crowdloan::accounts_payable(&2).unwrap();
+
+		// The reward info should be identical
+		assert_eq!(reward_info, reward_info_2);
 	});
 }

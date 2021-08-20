@@ -140,7 +140,7 @@ pub mod pallet {
 	/// Stores info about the rewards owed as well as how much has been vested so far.
 	/// For a primer on this kind of design, see the recipe on compounding interest
 	/// https://substrate.dev/recipes/fixed-point.html#continuously-compounding
-	#[derive(Default, Clone, Encode, Decode, RuntimeDebug)]
+	#[derive(Default, Clone, Encode, Decode, RuntimeDebug, PartialEq)]
 	pub struct RewardInfo<T: Config> {
 		pub total_reward: BalanceOf<T>,
 		pub claimed_reward: BalanceOf<T>,
