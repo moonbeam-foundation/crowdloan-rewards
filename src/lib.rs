@@ -267,6 +267,7 @@ pub mod pallet {
 			);
 
 			// To avoid replay attacks, we make sure the payload contains the previous address too
+			// I am assuming no rational user will go back to a previously changed reward address
 			let mut payload = reward_account.encode();
 			payload.append(&mut previous_account.encode());
 
