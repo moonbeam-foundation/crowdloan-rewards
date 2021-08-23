@@ -134,6 +134,8 @@ impl Config for Test {
 	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
+	type VestingBlockNumber = RelayChainBlockNumber;
+	type VestingBlockProvider = cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Self>;
 	type WeightInfo = ();
 }
 
