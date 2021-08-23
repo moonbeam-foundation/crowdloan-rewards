@@ -76,14 +76,13 @@ pub mod pallet {
 	use crate::weights::WeightInfo;
 	use frame_support::traits::WithdrawReasons;
 	use frame_support::{
-		dispatch::fmt::Debug,
 		pallet_prelude::*,
 		traits::{Currency, ExistenceRequirement::AllowDeath},
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::traits::{AccountIdConversion, BlockNumberProvider, Saturating, Verify};
+	use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec::Vec;
 	use sp_std::vec;
@@ -113,26 +112,16 @@ pub mod pallet {
 		type MinimumReward: Get<BalanceOf<Self>>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
-		// TODO What trait bounds do I need here? I think concretely we would
-		// be using MultiSigner? Or maybe MultiAccount? I copied these from frame_system
 		/// The AccountId type contributors used on the relay chain.
 		type RelayChainAccountId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ Default
-			+ Debug
+			//TODO these AccountId32 bounds feel a little extraneous. I wonder if we can remove them.
 			+ Into<AccountId32>
 			+ From<AccountId32>;
 		
-		//TODO do we need at least 32 bit unsigned
 		/// The type that will be used to track vesting progress
-		type VestingBlockNumber: sp_runtime::traits::AtLeast32BitUnsigned + Parameter
-		+ Member
-		+ MaybeSerializeDeserialize
-		+ Ord
+		type VestingBlockNumber: AtLeast32BitUnsigned
+		+ Parameter
 		+ Default
-		+ Debug
 		+ Into<BalanceOf<Self>>;
 
 		/// The notion of time that will be used for vesting. Probably
