@@ -411,7 +411,7 @@ fn update_address_works() {
 			init_block + VESTING
 		));
 
-		roll_to(4);
+		roll_to(3);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_noop!(
 			Crowdloan::claim(Origin::signed(8)),
@@ -419,7 +419,7 @@ fn update_address_works() {
 		);
 		assert_ok!(Crowdloan::update_reward_address(Origin::signed(1), 8));
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 200);
-		roll_to(6);
+		roll_to(5);
 		assert_ok!(Crowdloan::claim(Origin::signed(8)));
 		assert_eq!(Crowdloan::accounts_payable(&8).unwrap().claimed_reward, 300);
 		// The initial payment is not
@@ -490,7 +490,7 @@ fn update_address_with_existing_with_multi_address_works() {
 			init_block + VESTING
 		));
 
-		roll_to(4);
+		roll_to(3);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 
 		// We make sure all rewards go to the new address
