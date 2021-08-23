@@ -648,7 +648,7 @@ fn initialize_new_addresses_with_batch() {
 }
 
 #[test]
-fn floating_point_arithmetic_works() {
+fn fixed_point_arithmetic_works() {
 	empty().execute_with(|| {
 		// The init relay block gets inserted
 		roll_to(2);
@@ -664,7 +664,8 @@ fn floating_point_arithmetic_works() {
 				Some(2),
 				1185
 			)])),
-			// We will work with this. This has 100/8=12.5 payable per block
+			// We will work with this contribution.
+			// This has 25 paid immediately and 100/8=12.5 payable per block
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
 				[3u8; 32].into(),
 				Some(3),
@@ -683,29 +684,28 @@ fn floating_point_arithmetic_works() {
 			25u128
 		);
 
-		// Block relay number is 2 post init initialization
+		// Vesting block number is 2 post init initialization
 		// In this case there is no problem. Here we pay 12.5*2=25
 		// Total claimed reward: 25+25 = 50
-		roll_to(4);
-
+		roll_to(3);
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
-
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
 			50u128
 		);
-		roll_to(5);
-		// If we claim now we have to pay 12.5. 12 will be paid.
-		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
+		// If we claim now we have to pay 12.5. 12 will be paid.
+		roll_to(4);
+		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
 			62u128
 		);
-		roll_to(6);
+		
 		// Now we should pay 12.5. However the calculus will be:
 		// Account 3 should have claimed 50 + 25 at this block, but
 		// he only claimed 62. The payment is 13
+		roll_to(5);
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 		assert_eq!(
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
