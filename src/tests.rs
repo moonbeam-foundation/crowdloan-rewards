@@ -228,32 +228,40 @@ fn paying_works_step_by_step() {
 		));
 		// 1 is payable
 		assert!(Crowdloan::accounts_payable(&1).is_some());
-		roll_to(4);
+
+		roll_to(3);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 200);
 		assert_noop!(
 			Crowdloan::claim(Origin::signed(3)),
 			Error::<Test>::NoAssociatedClaim
 		);
-		roll_to(5);
+
+		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 250);
-		roll_to(6);
+
+		roll_to(5);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 300);
-		roll_to(7);
+
+		roll_to(6);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 350);
-		roll_to(8);
+
+		roll_to(7);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 400);
-		roll_to(9);
+
+		roll_to(8);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 450);
-		roll_to(10);
+
+		roll_to(9);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
 		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
-		roll_to(11);
+
+		roll_to(10);
 		assert_noop!(
 			Crowdloan::claim(Origin::signed(1)),
 			Error::<Test>::RewardsAlreadyClaimed
