@@ -188,7 +188,8 @@ fn initializing_multi_relay_to_single_native_address_works() {
 
 		roll_to(4);
 		assert_ok!(Crowdloan::claim(Origin::signed(1)));
-		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 400);
+		// Expect 500 clained (200 immediately + 100 per block for 3 blocks)
+		assert_eq!(Crowdloan::accounts_payable(&1).unwrap().claimed_reward, 500);
 		assert_noop!(
 			Crowdloan::claim(Origin::signed(3)),
 			Error::<Test>::NoAssociatedClaim
@@ -197,7 +198,7 @@ fn initializing_multi_relay_to_single_native_address_works() {
 		let expected = vec![
 			crate::Event::InitialPaymentMade(1, 100),
 			crate::Event::InitialPaymentMade(1, 100),
-			crate::Event::RewardsPaid(1, 200),
+			crate::Event::RewardsPaid(1, 300),
 		];
 		assert_eq!(events(), expected);
 	});
