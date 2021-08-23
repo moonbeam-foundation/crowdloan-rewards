@@ -772,7 +772,7 @@ fn reward_below_vesting_period_works() {
 		// Block relay number is 2 post init initialization
 		// Here we should pay floor(0.625*2)=1
 		// Total claimed reward: 1+1 = 2
-		roll_to(4);
+		roll_to(3);
 
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
@@ -780,7 +780,7 @@ fn reward_below_vesting_period_works() {
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
 			2u128
 		);
-		roll_to(5);
+		roll_to(4);
 		// If we claim now we have to pay floor(0.625) = 0
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
@@ -788,7 +788,7 @@ fn reward_below_vesting_period_works() {
 			Crowdloan::accounts_payable(&3).unwrap().claimed_reward,
 			2u128
 		);
-		roll_to(6);
+		roll_to(5);
 		// Now we should pay 1 again. The claimer should have claimed floor(0.625*4) + 1
 		// but he only claimed 2
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
