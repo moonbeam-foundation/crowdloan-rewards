@@ -86,8 +86,8 @@ pub mod pallet {
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};
 	use sp_runtime::{MultiSignature, Perbill};
-	use sp_std::vec::Vec;
 	use sp_std::vec;
+	use sp_std::vec::Vec;
 
 	#[pallet::pallet]
 	// The crowdloan rewards pallet
@@ -315,8 +315,7 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 
 			// Calculate the veted amount on demand.
-			let info =
-				AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
+			let info = AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
 
 			// For now I prefer that we dont support providing an existing account here
 			ensure!(
