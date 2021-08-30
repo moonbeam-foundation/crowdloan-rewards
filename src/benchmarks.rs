@@ -15,7 +15,7 @@ use sp_core::{
 	ed25519,
 };
 use sp_runtime::{traits::One, MultiSignature};
-use sp_runtime::traits::BlockNumberProvider;
+use sp_runtime::offchain::storage_lock::BlockNumberProvider;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
