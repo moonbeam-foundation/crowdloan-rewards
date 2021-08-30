@@ -1,12 +1,6 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::{BalanceOf, Call, Config, Pallet};
-use cumulus_pallet_parachain_system::Pallet as RelayPallet;
-use cumulus_primitives_core::{
-	relay_chain::{v1::HeadData, BlockNumber as RelayChainBlockNumber},
-	PersistedValidationData,
-};
-use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use ed25519_dalek::Signer;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
@@ -21,6 +15,7 @@ use sp_core::{
 	ed25519,
 };
 use sp_runtime::{traits::One, MultiSignature};
+use sp_runtime::traits::BlockNumberProvider;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
@@ -67,33 +62,6 @@ fn create_funded_user<T: Config>(
 	user
 }
 
-fn create_inherent_data<T: Config>(block_number: u32) -> InherentData {
-	//let (relay_parent_storage_root, relay_chain_state) = create_fake_valid_proof();
-	let vfp = PersistedValidationData {
-		relay_parent_number: block_number as RelayChainBlockNumber,
-		relay_parent_storage_root: MOCK_PROOF_HASH.into(),
-		max_pov_size: 1000u32,
-		parent_head: HeadData(vec![1, 1, 1]),
-	};
-	let inherent_data = {
-		let mut inherent_data = InherentData::default();
-		let system_inherent_data = ParachainInherentData {
-			validation_data: vfp.clone(),
-			relay_chain_state: StorageProof::new(vec![MOCK_PROOF.to_vec()]),
-			downward_messages: Default::default(),
-			horizontal_messages: Default::default(),
-		};
-		inherent_data
-			.put_data(
-				cumulus_primitives_parachain_inherent::INHERENT_IDENTIFIER,
-				&system_inherent_data,
-			)
-			.expect("failed to put VFP inherent");
-		inherent_data
-	};
-	inherent_data
-}
-
 /// Create contributors.
 fn create_contributors<T: Config>(
 	total_number: u32,
@@ -135,7 +103,7 @@ fn insert_contributors<T: Config>(
 }
 
 /// Create a Contributor.
-fn close_initialization<T: Config>(end_relay: RelayChainBlockNumber) -> Result<(), &'static str> {
+fn close_initialization<T: Config>(end_relay: T::VestingBlockNumber) -> Result<(), &'static str> {
 	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_relay)?;
 	Ok(())
 }
@@ -197,16 +165,11 @@ benchmarks! {
 		insert_contributors::<T>(contributors)?;
 
 		// We need to create the first block inherent, to initialize the initRelayBlock
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+
+		T::VestingBlockProvider::current_block_number();
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
-	}:  _(RawOrigin::Root, 10u32)
+	}:  _(RawOrigin::Root, 10u32.into())
 	verify {
 	  assert!(Pallet::<T>::initialized());
 	}
@@ -231,25 +194,11 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::current_block_number();
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 		// Create 4th relay block, by now the user should have vested some amount
-		RelayPallet::<T>::on_initialize(4u32.into());
-
-		let last_block_inherent = create_inherent_data::<T>(4u32);
-		RelayPallet::<T>::create_inherent(&last_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-
-		RelayPallet::<T>::on_finalize(4u32.into());
+		T::VestingBlockProvider::current_block_number();
 
 	}:  _(RawOrigin::Signed(caller.clone()))
 	verify {
@@ -277,26 +226,14 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::current_block_number();
+
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 
 		// Let's advance the relay so that the vested  amount get transferred
 
-		RelayPallet::<T>::on_initialize(4u32.into());
-		let last_block_inherent = create_inherent_data::<T>(4u32);
-		RelayPallet::<T>::create_inherent(&last_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-
-		RelayPallet::<T>::on_finalize(4u32.into());
+		T::VestingBlockProvider::current_block_number();
 
 		// The new user
 		let new_user = create_funded_user::<T>("user", SEED+1, 0u32.into());
@@ -329,14 +266,8 @@ benchmarks! {
 		// Clonse initialization
 		close_initialization::<T>(10u32.into())?;
 
-		// First inherent
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::current_block_number();
+
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
@@ -357,37 +288,6 @@ mod tests {
 			.build_storage::<Test>()
 			.unwrap();
 		TestExternalities::new(t)
-	}
-
-	#[test]
-	fn bench_init_reward_vec() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_initialize_reward_vec::<Test>());
-		});
-	}
-	#[test]
-	fn bench_complete_initialization() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_complete_initialization::<Test>());
-		});
-	}
-	#[test]
-	fn bench_claim() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim::<Test>());
-		});
-	}
-	#[test]
-	fn bench_update_reward_address() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_reward_address::<Test>());
-		});
-	}
-	#[test]
-	fn bench_associate_native_identity() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_associate_native_identity::<Test>());
-		});
 	}
 }
 
