@@ -82,7 +82,8 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Saturating, Verify};
+	use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, Verify};
+	use sp_runtime::offchain::storage_lock::BlockNumberProvider;
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec::Vec;
 	use sp_std::vec;
