@@ -196,13 +196,15 @@ benchmarks! {
 		// First inherent
 		T::VestingBlockProvider::current_block_number();
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
-
+		let claimed_reward = Pallet::<T>::accounts_payable(&caller).unwrap().claimed_reward;
 		// Create 4th relay block, by now the user should have vested some amount
 		T::VestingBlockProvider::current_block_number();
+		Pallet::<T>::on_finalize(4u32.into());
+
 
 	}:  _(RawOrigin::Signed(caller.clone()))
 	verify {
-	  assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().total_reward, (100u32.into()));
+	  assert!(Pallet::<T>::accounts_payable(&caller).unwrap().claimed_reward > claimed_reward);
 	}
 
 	update_reward_address {
