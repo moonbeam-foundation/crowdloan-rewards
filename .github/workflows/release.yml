@@ -15,6 +15,9 @@ jobs:
 
       - name: Setup Rust toolchain
         run: rustup show
+      
+      - name: Formatter version
+        run: cargo fmt --version
 
       - name: Formatter
         run: cargo fmt --all
