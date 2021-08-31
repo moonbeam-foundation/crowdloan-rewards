@@ -8,7 +8,7 @@ use frame_support::{
 	inherent::{InherentData, ProvideInherent},
 	traits::{Currency, Get, OnFinalize, OnInitialize},
 };
-use frame_system::RawOrigin;
+use frame_system::{Pallet as System, RawOrigin};
 use parity_scale_codec::Encode;
 use sp_core::{
 	crypto::{AccountId32, UncheckedFrom},
@@ -19,6 +19,7 @@ use sp_runtime::offchain::storage_lock::BlockNumberProvider;
 use sp_std::vec;
 use sp_std::vec::Vec;
 use sp_trie::StorageProof;
+
 // This is a fake proof that emulates a storage proof inserted as the validation data
 // We avoid using the sproof builder here because it generates an issue when compiling without std
 // Fake storage proof
@@ -125,6 +126,7 @@ fn max_batch_contributors<T: Config>() -> u32 {
 	<<T as Config>::MaxInitContributors as Get<u32>>::get()
 }
 
+
 // This is our current number of contributors
 const MAX_ALREADY_USERS: u32 = 5799;
 const SEED: u32 = 999999999;
@@ -132,7 +134,7 @@ benchmarks! {
 	initialize_reward_vec {
 		let x in 1..max_batch_contributors::<T>();
 		let y = MAX_ALREADY_USERS;
-
+		
 		let total_pot = 100u32*(x+y);
 		// We probably need to assume we have N contributors already in
 		// Fund pallet account
@@ -195,10 +197,11 @@ benchmarks! {
 
 		// First inherent
 		T::VestingBlockProvider::current_block_number();
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 		let claimed_reward = Pallet::<T>::accounts_payable(&caller).unwrap().claimed_reward;
 		// Create 4th relay block, by now the user should have vested some amount
-		T::VestingBlockProvider::current_block_number();
+		frame_system::Pallet::<T>::set_block_number(4u32.into());
 		Pallet::<T>::on_finalize(4u32.into());
 
 
@@ -270,6 +273,7 @@ benchmarks! {
 
 		T::VestingBlockProvider::current_block_number();
 
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
