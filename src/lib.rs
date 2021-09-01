@@ -144,6 +144,8 @@ pub mod pallet {
 
 		/// The notion of time that will be used for vesting. Probably
 		/// either the relay chain or sovereign chain block number.
+		/// This should change to use sp_runtime::traits::BlockNumberProvider once
+		/// https://github.com/paritytech/substrate/pull/9668  is merged
 		type VestingBlockProvider: BlockProvider<BlockNumber = Self::VestingBlockNumber>;
 
 		type WeightInfo: WeightInfo;
