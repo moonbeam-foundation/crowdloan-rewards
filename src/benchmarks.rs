@@ -1,14 +1,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
+use crate::pallet::BlockProvider;
 use crate::{BalanceOf, Call, Config, Pallet};
 use ed25519_dalek::Signer;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::{
-	dispatch::UnfilteredDispatchable,
-	inherent::{InherentData, ProvideInherent},
-	traits::{Currency, Get, OnFinalize, OnInitialize},
-};
-use frame_system::{Pallet as System, RawOrigin};
+use frame_support::traits::{Currency, Get, OnFinalize};
+use frame_system::RawOrigin;
 use parity_scale_codec::Encode;
 use sp_core::{
 	crypto::{AccountId32, UncheckedFrom},
@@ -18,22 +15,6 @@ use sp_runtime::{traits::One, MultiSignature};
 use sp_runtime::offchain::storage_lock::BlockNumberProvider;
 use sp_std::vec;
 use sp_std::vec::Vec;
-use sp_trie::StorageProof;
-
-// This is a fake proof that emulates a storage proof inserted as the validation data
-// We avoid using the sproof builder here because it generates an issue when compiling without std
-// Fake storage proof
-const MOCK_PROOF: [u8; 71] = [
-	127, 1, 6, 222, 61, 138, 84, 210, 126, 68, 169, 213, 206, 24, 150, 24, 242, 45, 180, 180, 157,
-	149, 50, 13, 144, 33, 153, 76, 133, 15, 37, 184, 227, 133, 144, 0, 0, 32, 0, 0, 0, 16, 0, 8, 0,
-	0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0,
-];
-
-// fake storage root. This is valid with the previous proof
-const MOCK_PROOF_HASH: [u8; 32] = [
-	216, 6, 227, 175, 180, 211, 98, 117, 202, 245, 206, 51, 21, 143, 100, 232, 96, 217, 14, 71,
-	243, 146, 7, 202, 245, 129, 165, 70, 72, 184, 130, 141,
-];
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
@@ -167,8 +148,7 @@ benchmarks! {
 		insert_contributors::<T>(contributors)?;
 
 		// We need to create the first block inherent, to initialize the initRelayBlock
-
-		T::VestingBlockProvider::current_block_number();
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 	}:  _(RawOrigin::Root, 10u32.into())
@@ -196,18 +176,19 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		T::VestingBlockProvider::current_block_number();
-		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::one());
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
+
+		// Claimed
 		let claimed_reward = Pallet::<T>::accounts_payable(&caller).unwrap().claimed_reward;
+
 		// Create 4th relay block, by now the user should have vested some amount
-		frame_system::Pallet::<T>::set_block_number(4u32.into());
-		Pallet::<T>::on_finalize(4u32.into());
+		T::VestingBlockProvider::set_block_number(4u32.into());
 
 
 	}:  _(RawOrigin::Signed(caller.clone()))
 	verify {
-	  assert!(Pallet::<T>::accounts_payable(&caller).unwrap().claimed_reward > claimed_reward);
+		assert!(Pallet::<T>::accounts_payable(&caller).unwrap().claimed_reward > claimed_reward);
 	}
 
 	update_reward_address {
@@ -231,14 +212,12 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		T::VestingBlockProvider::current_block_number();
-
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 
 		// Let's advance the relay so that the vested  amount get transferred
-
-		T::VestingBlockProvider::current_block_number();
+		T::VestingBlockProvider::set_block_number(4u32.into());
 
 		// The new user
 		let new_user = create_funded_user::<T>("user", SEED+1, 0u32.into());
@@ -271,9 +250,8 @@ benchmarks! {
 		// Clonse initialization
 		close_initialization::<T>(10u32.into())?;
 
-		T::VestingBlockProvider::current_block_number();
-
-		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::one());
+		// First inherent
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
@@ -284,9 +262,7 @@ benchmarks! {
 }
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use crate::mock::Test;
-	use frame_support::assert_ok;
 	use sp_io::TestExternalities;
 
 	pub fn new_test_ext() -> TestExternalities {
