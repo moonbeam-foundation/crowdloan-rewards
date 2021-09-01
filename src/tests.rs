@@ -632,6 +632,8 @@ fn initialize_new_addresses_with_batch() {
 		);
 
 		let expected = vec![
+			pallet_utility::Event::ItemCompleted,
+			pallet_utility::Event::ItemCompleted,
 			pallet_utility::Event::BatchCompleted,
 			pallet_utility::Event::BatchInterrupted(
 				0,
