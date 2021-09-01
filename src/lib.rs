@@ -96,6 +96,7 @@ pub mod pallet {
 	pub struct RelayChainBeacon<T>(PhantomData<T>);
 
 	/// Something that can provide a block number
+	/// To be removed once https://github.com/paritytech/substrate/pull/9668 is merged
 	pub trait BlockProvider {
 		/// Type of `BlockNumber` to provide.
 		type BlockNumber: parity_scale_codec::Codec + Clone + Ord + Eq + AtLeast32BitUnsigned;
