@@ -347,9 +347,7 @@ benchmarks! {
 }
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use crate::mock::Test;
-	use frame_support::assert_ok;
 	use sp_io::TestExternalities;
 
 	pub fn new_test_ext() -> TestExternalities {
@@ -357,37 +355,6 @@ mod tests {
 			.build_storage::<Test>()
 			.unwrap();
 		TestExternalities::new(t)
-	}
-
-	#[test]
-	fn bench_init_reward_vec() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_initialize_reward_vec::<Test>());
-		});
-	}
-	#[test]
-	fn bench_complete_initialization() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_complete_initialization::<Test>());
-		});
-	}
-	#[test]
-	fn bench_claim() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_claim::<Test>());
-		});
-	}
-	#[test]
-	fn bench_update_reward_address() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_update_reward_address::<Test>());
-		});
-	}
-	#[test]
-	fn bench_associate_native_identity() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(test_benchmark_associate_native_identity::<Test>());
-		});
 	}
 }
 
