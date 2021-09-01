@@ -83,10 +83,9 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, Verify};
-	use sp_runtime::offchain::storage_lock::BlockNumberProvider;
 	use sp_runtime::{MultiSignature, Perbill};
-	use sp_std::vec::Vec;
 	use sp_std::vec;
+	use sp_std::vec::Vec;
 
 	#[pallet::pallet]
 	// The crowdloan rewards pallet
@@ -95,6 +94,26 @@ pub mod pallet {
 	pub const PALLET_ID: PalletId = PalletId(*b"Crowdloa");
 
 	pub struct RelayChainBeacon<T>(PhantomData<T>);
+
+	/// Something that can provide a block number
+	pub trait BlockProvider {
+		/// Type of `BlockNumber` to provide.
+		type BlockNumber: parity_scale_codec::Codec + Clone + Ord + Eq + AtLeast32BitUnsigned;
+
+		/// Returns the current block number.
+		///
+		/// Provides an abstraction over an arbitrary way of providing the
+		/// current block number.
+		///
+		fn current_block_number() -> Self::BlockNumber;
+
+		/// Utility function only to be used in benchmarking scenarios, to be implemented optionally,
+		/// else a noop.
+		///
+		/// It allows for setting the block number that will later be fetched
+		#[cfg(any(feature = "runtime-benchmarks", test))]
+		fn set_block_number(_block: Self::BlockNumber) {}
+	}
 
 	/// Configuration trait of this pallet.
 	#[pallet::config]
@@ -118,16 +137,13 @@ pub mod pallet {
 			//TODO these AccountId32 bounds feel a little extraneous. I wonder if we can remove them.
 			+ Into<AccountId32>
 			+ From<AccountId32>;
-		
+
 		/// The type that will be used to track vesting progress
-		type VestingBlockNumber: AtLeast32BitUnsigned
-		+ Parameter
-		+ Default
-		+ Into<BalanceOf<Self>>;
+		type VestingBlockNumber: AtLeast32BitUnsigned + Parameter + Default + Into<BalanceOf<Self>>;
 
 		/// The notion of time that will be used for vesting. Probably
 		/// either the relay chain or sovereign chain block number.
-		type VestingBlockProvider: BlockNumberProvider<BlockNumber = Self::VestingBlockNumber>;
+		type VestingBlockProvider: BlockProvider<BlockNumber = Self::VestingBlockNumber>;
 
 		type WeightInfo: WeightInfo;
 	}
@@ -313,8 +329,7 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 
 			// Calculate the veted amount on demand.
-			let info =
-				AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
+			let info = AccountsPayable::<T>::get(&signer).ok_or(Error::<T>::NoAssociatedClaim)?;
 
 			// For now I prefer that we dont support providing an existing account here
 			ensure!(
