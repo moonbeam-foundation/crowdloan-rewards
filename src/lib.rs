@@ -570,6 +570,10 @@ pub mod pallet {
 			T::RewardCurrency::free_balance(&Self::account_id())
 		}
 		/// Verify a set of signatures made with relay chain accounts
+		/// We are verifying all the signatures, and then counting
+		/// We could do something more efficient like count as we verify
+		/// In any of the cases the weight will need to account for all the signatures,
+		/// as we dont know beforehand whether they will be valid
 		fn verify_signatures(
 			proofs: Vec<(T::RelayChainAccountId, MultiSignature)>,
 			reward_info: RewardInfo<T>,
@@ -593,6 +597,8 @@ pub mod pallet {
 						Error::<T>::NonContributedAddressProvided
 					);
 
+					// I am erroring here as I think it is good to know the reason in the single-case
+					// signature
 					ensure!(
 						signature.verify(payload.as_slice(), &relay_account.clone().into()),
 						Error::<T>::InvalidClaimSignature
