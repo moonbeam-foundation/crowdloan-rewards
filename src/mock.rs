@@ -95,7 +95,7 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
-use sp_runtime::traits::BlockNumberProvider;
+use sp_runtime::offchain::storage_lock::BlockNumberProvider;
 pub struct MockedBlockProvider;
 impl BlockProvider for MockedBlockProvider {
 	type BlockNumber = u64;
