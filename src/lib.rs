@@ -698,7 +698,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn end_relay_block)]
-	/// Relay block height at the initialization of the pallet
+	/// Relay block height at which vesting will be complete and all rewards fully vested.
 	type EndRelayBlock<T: Config> = StorageValue<_, relay_chain::BlockNumber, ValueQuery>;
 
 	#[pallet::storage]

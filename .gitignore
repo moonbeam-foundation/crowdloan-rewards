@@ -7,4 +7,5 @@
 **/node_modules
 
 # Don't check in Cargo.lock because this is a library
-Cargo.lock
+# Commenting this line because there seems to be an issue with the snow dependency
+# Cargo.lock
