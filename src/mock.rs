@@ -15,10 +15,9 @@
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Test utilities
-use crate::{self as pallet_crowdloan_rewards, Config};
+use crate::{self as pallet_crowdloan_rewards, BlockProvider, Config};
 use frame_support::{
-	construct_runtime,
-	parameter_types,
+	construct_runtime, parameter_types,
 	traits::{GenesisBuild, OnFinalize, OnInitialize},
 };
 use sp_core::{ed25519, Pair, H256};
@@ -96,6 +95,19 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
+use sp_runtime::traits::BlockNumberProvider;
+pub struct MockedBlockProvider;
+impl BlockProvider for MockedBlockProvider {
+	type BlockNumber = u64;
+
+	fn current_block_number() -> Self::BlockNumber {
+		System::current_block_number()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set_block_number(_block: Self::BlockNumber) {}
+}
+
 parameter_types! {
 	pub const TestMaxInitContributors: u32 = 8;
 	pub const TestMinimumReward: u128 = 0;
@@ -112,7 +124,7 @@ impl Config for Test {
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type VestingBlockNumber = <Self as frame_system::Config>::BlockNumber;
-	type VestingBlockProvider = System;
+	type VestingBlockProvider = MockedBlockProvider;
 	type WeightInfo = ();
 }
 
