@@ -82,7 +82,9 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Saturating, Verify};
+	use sp_runtime::traits::{
+		AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Saturating, Verify,
+	};
 	use sp_runtime::{MultiSignature, Perbill};
 	use sp_std::vec;
 	use sp_std::vec::Vec;
@@ -115,12 +117,9 @@ pub mod pallet {
 			//TODO these AccountId32 bounds feel a little extraneous. I wonder if we can remove them.
 			+ Into<AccountId32>
 			+ From<AccountId32>;
-		
+
 		/// The type that will be used to track vesting progress
-		type VestingBlockNumber: AtLeast32BitUnsigned
-		+ Parameter
-		+ Default
-		+ Into<BalanceOf<Self>>;
+		type VestingBlockNumber: AtLeast32BitUnsigned + Parameter + Default + Into<BalanceOf<Self>>;
 
 		/// The notion of time that will be used for vesting. Probably
 		/// either the relay chain or sovereign chain block number.

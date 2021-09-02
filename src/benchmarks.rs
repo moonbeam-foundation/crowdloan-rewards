@@ -135,7 +135,9 @@ fn insert_contributors<T: Config>(
 }
 
 /// Create a Contributor.
-fn close_initialization<T: Config>(end_vesting_block: T::VestingBlockNumber) -> Result<(), &'static str> {
+fn close_initialization<T: Config>(
+	end_vesting_block: T::VestingBlockNumber,
+) -> Result<(), &'static str> {
 	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_vesting_block)?;
 	Ok(())
 }
