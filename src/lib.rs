@@ -93,8 +93,6 @@ pub mod pallet {
 
 	pub const PALLET_ID: PalletId = PalletId(*b"Crowdloa");
 
-	pub struct RelayChainBeacon<T>(PhantomData<T>);
-
 	/// Configuration trait of this pallet.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -145,11 +143,11 @@ pub mod pallet {
 		pub contributed_relay_addresses: Vec<T::RelayChainAccountId>,
 	}
 
-	// This hook is in charge of initializing the relay chain height at the first block of the parachain
+	// This hook is in charge of initializing the vesting height at the first block of the parachain
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_finalize(n: <T as frame_system::Config>::BlockNumber) {
-			// In the first block of the parachain we need to introduce the relay block related info
+			// In the first block of the parachain we need to introduce the vesting block related info
 			if n == 1u32.into() {
 				<InitVestingBlock<T>>::put(T::VestingBlockProvider::current_block_number());
 			}
@@ -335,7 +333,7 @@ pub mod pallet {
 
 		/// This extrinsic completes the initialization if some checks are fullfiled. These checks are:
 		///  -The reward contribution money matches the crowdloan pot
-		///  -The end relay block is higher than the init relay block
+		///  -The end vesting block is higher than the init vesting block
 		///  -The initialization has not complete yet
 		#[pallet::weight(T::WeightInfo::complete_initialization())]
 		pub fn complete_initialization(
@@ -352,7 +350,8 @@ pub mod pallet {
 				Error::<T>::RewardVecAlreadyInitialized
 			);
 
-			// This ensures the lease ending block is bigger than the init relay block
+			// This ensures the end vesting block (when all funds are fully vested)
+			// is bigger than the init vesting block
 			ensure!(
 				lease_ending_block > InitVestingBlock::<T>::get(),
 				Error::<T>::VestingPeriodNonValid
@@ -438,7 +437,7 @@ pub mod pallet {
 				}
 
 				if *reward < T::MinimumReward::get() {
-					// Dont fail as this is supposed to be called with batch calls and we
+					// Don't fail as this is supposed to be called with batch calls and we
 					// dont want to stall the rest of the contributions
 					Self::deposit_event(Event::InitializedAccountWithNotEnoughContribution(
 						relay_account.clone(),
@@ -466,7 +465,7 @@ pub mod pallet {
 					0u32.into()
 				};
 
-				// We need to calculate the vesting based on the relay block number
+				// Calculate the reward info to store after the initial payment has been made.
 				let mut reward_info = RewardInfo {
 					total_reward: *reward,
 					claimed_reward: initial_payment,
@@ -598,14 +597,14 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::storage_prefix = "InitRelayBlock"]
-	#[pallet::getter(fn init_relay_block)]
-	/// Relay block height at the initialization of the pallet
+	#[pallet::getter(fn init_vesting_block)]
+	/// Vesting block height at the initialization of the pallet
 	type InitVestingBlock<T: Config> = StorageValue<_, T::VestingBlockNumber, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::storage_prefix = "EndRelayBlock"]
-	#[pallet::getter(fn end_relay_block)]
-	/// Relay block height at the initialization of the pallet
+	#[pallet::getter(fn end_vesting_block)]
+	/// Vesting block height at the initialization of the pallet
 	type EndVestingBlock<T: Config> = StorageValue<_, T::VestingBlockNumber, ValueQuery>;
 
 	#[pallet::storage]
