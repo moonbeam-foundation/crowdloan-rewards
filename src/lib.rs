@@ -597,11 +597,13 @@ pub mod pallet {
 	pub type Initialized<T: Config> = StorageValue<_, bool, ValueQuery, T::Initialized>;
 
 	#[pallet::storage]
+	#[pallet::storage_prefix = "InitRelayBlock"]
 	#[pallet::getter(fn init_relay_block)]
 	/// Relay block height at the initialization of the pallet
 	type InitVestingBlock<T: Config> = StorageValue<_, T::VestingBlockNumber, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::storage_prefix = "EndRelayBlock"]
 	#[pallet::getter(fn end_relay_block)]
 	/// Relay block height at the initialization of the pallet
 	type EndVestingBlock<T: Config> = StorageValue<_, T::VestingBlockNumber, ValueQuery>;
