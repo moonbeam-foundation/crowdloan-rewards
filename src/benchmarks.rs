@@ -135,8 +135,8 @@ fn insert_contributors<T: Config>(
 }
 
 /// Create a Contributor.
-fn close_initialization<T: Config>(end_relay: RelayChainBlockNumber) -> Result<(), &'static str> {
-	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_relay)?;
+fn close_initialization<T: Config>(end_vesting_block: T::VestingBlockNumber) -> Result<(), &'static str> {
+	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_vesting_block)?;
 	Ok(())
 }
 
@@ -206,7 +206,7 @@ benchmarks! {
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
-	}:  _(RawOrigin::Root, 10u32)
+	}:  _(RawOrigin::Root, 10.into())
 	verify {
 	  assert!(Pallet::<T>::initialized());
 	}
