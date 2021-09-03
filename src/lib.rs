@@ -251,7 +251,7 @@ pub mod pallet {
 		///
 		/// The number of valid proofs needs to be bigger than 'RewardAddressRelayVoteThreshold'
 		/// The account to be changed needs to be submitted as 'previous_account'
-		#[pallet::weight(T::WeightInfo::associate_native_identity())]
+		#[pallet::weight(T::WeightInfo::change_association_with_relay_keys(proofs.len() as u32))]
 		pub fn change_association_with_relay_keys(
 			origin: OriginFor<T>,
 			reward_account: T::AccountId,
