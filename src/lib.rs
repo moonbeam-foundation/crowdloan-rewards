@@ -582,7 +582,7 @@ pub mod pallet {
 			// The proofs should
 			// 1. be signed by contributors to this address, otherwise they are not counted
 			// 2. Signs a valid native identity
-			// 3. The sum of the valid proofs needs to be bigger than UnsifficientNumberOfValidProofs
+			// 3. The sum of the valid proofs needs to be bigger than InsufficientNumberOfValidProofs
 
 			// I use a map here for faster lookups
 			let mut voted: BTreeMap<T::RelayChainAccountId, ()> = BTreeMap::new();
