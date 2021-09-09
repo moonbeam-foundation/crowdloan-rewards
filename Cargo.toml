@@ -48,6 +48,7 @@ std = [
     "cumulus-primitives-core/std",
     "cumulus-pallet-parachain-system/std",
     "cumulus-primitives-parachain-inherent/std",
+    "sp-trie/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
