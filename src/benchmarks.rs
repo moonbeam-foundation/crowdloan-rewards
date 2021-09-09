@@ -42,6 +42,7 @@ const MOCK_PROOF_HASH: [u8; 32] = [
 // These benchmarks only work with a Runtime that uses cumulus's RelayChainBlockNumberProvider.
 // This will improve once https://github.com/PureStake/crowdloan-rewards/pull/44 lands
 pub trait Config: crate::Config + cumulus_pallet_parachain_system::Config {}
+impl<T: crate::Config + cumulus_pallet_parachain_system::Config> Config for T {}
 
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
