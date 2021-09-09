@@ -45,6 +45,9 @@ std = [
     "log/std",
     "sp-std/std",
     "sp-io/std",
+    "cumulus-primitives-core/std",
+    "cumulus-pallet-parachain-system/std",
+    "cumulus-primitives-parachain-inherent/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
