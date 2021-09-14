@@ -136,6 +136,9 @@ impl Config for Test {
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type RewardAddressRelayVoteThreshold = TestRewardAddressRelayVoteThreshold;
+	type VestingBlockNumber = RelayChainBlockNumber;
+	type VestingBlockProvider =
+		cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Self>;
 	type WeightInfo = ();
 }
 

@@ -1,6 +1,6 @@
 #![cfg(feature = "runtime-benchmarks")]
 
-use crate::{BalanceOf, Call, Config, Pallet};
+use crate::{BalanceOf, Call, Pallet};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
 use cumulus_primitives_core::{
 	relay_chain::{v1::HeadData, BlockNumber as RelayChainBlockNumber},
@@ -39,9 +39,14 @@ const MOCK_PROOF_HASH: [u8; 32] = [
 	243, 146, 7, 202, 245, 129, 165, 70, 72, 184, 130, 141,
 ];
 
+// These benchmarks only work with a Runtime that uses cumulus's RelayChainBlockNumberProvider.
+// This will improve once https://github.com/PureStake/crowdloan-rewards/pull/44 lands
+pub trait Config: crate::Config + cumulus_pallet_parachain_system::Config {}
+impl<T: crate::Config + cumulus_pallet_parachain_system::Config> Config for T {}
+
 /// Default balance amount is minimum contribution
 fn default_balance<T: Config>() -> BalanceOf<T> {
-	<<T as Config>::MinimumReward as Get<BalanceOf<T>>>::get()
+	T::MinimumReward::get()
 }
 
 /// Create a funded user.
@@ -135,8 +140,10 @@ fn insert_contributors<T: Config>(
 }
 
 /// Create a Contributor.
-fn close_initialization<T: Config>(end_relay: RelayChainBlockNumber) -> Result<(), &'static str> {
-	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_relay)?;
+fn close_initialization<T: Config>(
+	end_vesting_block: T::VestingBlockNumber,
+) -> Result<(), &'static str> {
+	Pallet::<T>::complete_initialization(RawOrigin::Root.into(), end_vesting_block)?;
 	Ok(())
 }
 
@@ -160,7 +167,7 @@ fn create_sig<T: Config>(seed: u32, payload: Vec<u8>) -> (AccountId32, MultiSign
 }
 
 fn max_batch_contributors<T: Config>() -> u32 {
-	<<T as Config>::MaxInitContributors as Get<u32>>::get()
+	T::MaxInitContributors::get()
 }
 
 // This is our current number of contributors
@@ -213,7 +220,7 @@ benchmarks! {
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
-	}:  _(RawOrigin::Root, 10u32)
+	}:  _(RawOrigin::Root, 10u32.into())
 	verify {
 	  assert!(Pallet::<T>::initialized());
 	}
