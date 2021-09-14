@@ -147,12 +147,18 @@ fn close_initialization<T: Config>(
 	Ok(())
 }
 
-fn create_sig<T: Config>(signed_account: T::AccountId) -> (AccountId32, MultiSignature) {
-	let seed: [u8; 32] = [1u8; 32];
-	let secret = ed25519_dalek::SecretKey::from_bytes(&seed).unwrap();
+fn create_sig<T: Config>(seed: u32, payload: Vec<u8>) -> (AccountId32, MultiSignature) {
+	// Crate seed
+	let mut seed_32: [u8; 32] = [0u8; 32];
+	let seed_as_slice = seed.to_be_bytes();
+	for j in 0..seed_as_slice.len() {
+		seed_32[j] = seed_as_slice[j]
+	}
+
+	let secret = ed25519_dalek::SecretKey::from_bytes(&seed_32).unwrap();
 	let public = ed25519_dalek::PublicKey::from(&secret);
 	let pair = ed25519_dalek::Keypair { secret, public };
-	let sig = pair.sign(&signed_account.encode()).to_bytes();
+	let sig = pair.sign(&payload).to_bytes();
 	let signature: MultiSignature = ed25519::Signature::from_raw(sig).into();
 
 	let ed_public: ed25519::Public = ed25519::Public::unchecked_from(public.to_bytes());
@@ -167,6 +173,7 @@ fn max_batch_contributors<T: Config>() -> u32 {
 // This is our current number of contributors
 const MAX_ALREADY_USERS: u32 = 5799;
 const SEED: u32 = 999999999;
+
 benchmarks! {
 	initialize_reward_vec {
 		let x in 1..max_batch_contributors::<T>();
@@ -323,7 +330,7 @@ benchmarks! {
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 
 		// Create a fake sig for such an account
-		let (relay_account, signature) = create_sig::<T>(caller.clone());
+		let (relay_account, signature) = create_sig::<T>(SEED, caller.clone().encode());
 
 		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity
 		// Create 1 contributor
@@ -349,6 +356,66 @@ benchmarks! {
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
 	verify {
 		assert_eq!(Pallet::<T>::accounts_payable(&caller).unwrap().total_reward, (100u32.into()));
+	}
+
+	change_association_with_relay_keys {
+
+		// The weight will depend on the number of proofs provided
+		// We need to parameterize this value
+		// We leave this as the max batch length
+		let x in 1..max_batch_contributors::<T>();
+
+		// Fund pallet account
+		let total_pot = 100u32*x;
+		fund_specific_account::<T>(Pallet::<T>::account_id(), total_pot.into());
+
+		// The first reward account that will associate the account
+		let first_reward_account: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
+
+		// The account to which we will update our reward account
+		let second_reward_account: T::AccountId = create_funded_user::<T>("user", SEED-1, 100u32.into());
+
+		let mut proofs: Vec<(T::RelayChainAccountId, MultiSignature)> = Vec::new();
+
+		// Construct payload
+		let mut payload = second_reward_account.clone().encode();
+		payload.append(&mut first_reward_account.clone().encode());
+
+		// Create N sigs for N accounts
+		for i in 0..x {
+			let (relay_account, signature) = create_sig::<T>(SEED-i, payload.clone());
+			proofs.push((relay_account.into(), signature));
+		}
+
+		// Create x contributors
+		// All of them map to the same account
+		let mut contributors: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)> = Vec::new();
+		for (relay_account, _) in proofs.clone() {
+			contributors.push((relay_account, Some(first_reward_account.clone()), 100u32.into()));
+		}
+
+		// Insert them
+		insert_contributors::<T>(contributors.clone())?;
+
+		// Clonse initialization
+		close_initialization::<T>(10u32.into())?;
+
+		// First inherent
+		let first_block_inherent = create_inherent_data::<T>(1u32);
+		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
+		RelayPallet::<T>::create_inherent(&first_block_inherent)
+			.expect("got an inherent")
+			.dispatch_bypass_filter(RawOrigin::None.into())
+			.expect("dispatch succeeded");
+		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(T::BlockNumber::one());
+
+	}:  _(RawOrigin::Signed(first_reward_account.clone()), second_reward_account.clone(), first_reward_account.clone(), proofs)
+	verify {
+		assert!(Pallet::<T>::accounts_payable(&second_reward_account).is_some());
+		assert_eq!(Pallet::<T>::accounts_payable(&second_reward_account).unwrap().total_reward, (100u32*x).into());
+		assert!(Pallet::<T>::accounts_payable(&first_reward_account).is_none());
+
 	}
 
 }

@@ -86,9 +86,9 @@ pub mod pallet {
 		AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Saturating, Verify,
 	};
 	use sp_runtime::{MultiSignature, Perbill};
+	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec;
 	use sp_std::vec::Vec;
-
 	#[pallet::pallet]
 	// The crowdloan rewards pallet
 	pub struct Pallet<T>(PhantomData<T>);
@@ -110,13 +110,18 @@ pub mod pallet {
 		type MaxInitContributors: Get<u32>;
 		/// The minimum contribution to which rewards will be paid.
 		type MinimumReward: Get<BalanceOf<Self>>;
+		/// A fraction representing the percentage of proofs
+		/// that need to be presented to change a reward address through the relay keys
+		#[pallet::constant]
+		type RewardAddressRelayVoteThreshold: Get<Perbill>;
 		/// The currency in which the rewards will be paid (probably the parachain native currency)
 		type RewardCurrency: Currency<Self::AccountId>;
 		/// The AccountId type contributors used on the relay chain.
 		type RelayChainAccountId: Parameter
 			//TODO these AccountId32 bounds feel a little extraneous. I wonder if we can remove them.
 			+ Into<AccountId32>
-			+ From<AccountId32>;
+			+ From<AccountId32>
+			+ Ord;
 
 		/// The type that will be used to track vesting progress
 		type VestingBlockNumber: AtLeast32BitUnsigned + Parameter + Default + Into<BalanceOf<Self>>;
@@ -135,7 +140,7 @@ pub mod pallet {
 	/// Stores info about the rewards owed as well as how much has been vested so far.
 	/// For a primer on this kind of design, see the recipe on compounding interest
 	/// https://substrate.dev/recipes/fixed-point.html#continuously-compounding
-	#[derive(Default, Clone, Encode, Decode, RuntimeDebug)]
+	#[derive(Default, Clone, Encode, Decode, RuntimeDebug, PartialEq)]
 	pub struct RewardInfo<T: Config> {
 		pub total_reward: BalanceOf<T>,
 		pub claimed_reward: BalanceOf<T>,
@@ -157,17 +162,9 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Associate a native rewards_destination identity with a crowdloan contribution.
 		///
-		/// This is an unsigned call because the caller may not have any funds to pay fees with.
-		/// This is inspired by Polkadot's claims pallet:
-		/// https://github.com/paritytech/polkadot/blob/master/runtime/common/src/claims.rs
-		///
-		/// The contributor needs to issue an additional addmemo transaction if it wants to receive
-		/// the reward in a parachain native account. For the moment I will leave this function here
-		/// just in case the contributor forgot to add such a memo field. Whenever we can read the
-		/// state of the relay chain, we should first check whether that memo field exists in the
-		/// contribution
-		/// Weight argument is 0 since it depends on how the storage trie is composed
-		/// Once we have the number of contributors, we can probably add such a weight here
+		/// The caller needs to provide the unassociated relay account and a proof to succeed
+		/// with the association
+		/// The proof is nothing but a signature over the reward_address using the relay keys
 		#[pallet::weight(T::WeightInfo::associate_native_identity())]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
@@ -183,13 +180,14 @@ pub mod pallet {
 			// Check the proof. The Proof consists of a Signature of the rewarded account with the
 			// claimer key
 
-			let payload = reward_account.encode();
-			ensure!(
-				proof.verify(payload.as_slice(), &relay_account.clone().into()),
-				Error::<T>::InvalidClaimSignature
-			);
+			// The less costly checks will go first
+
+			// The relay account should be unassociated
+			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
+				.ok_or(Error::<T>::NoAssociatedClaim)?;
 
 			// We ensure the relay chain id wast not yet associated to avoid multi-claiming
+			// We dont need this right now, as it will always be true if the above check is true
 			ensure!(
 				ClaimedRelayChainIds::<T>::get(&relay_account).is_none(),
 				Error::<T>::AlreadyAssociated
@@ -201,9 +199,14 @@ pub mod pallet {
 				Error::<T>::AlreadyAssociated
 			);
 
-			// Upon error this should check the relay chain state in this case
-			let mut reward_info = UnassociatedContributions::<T>::get(&relay_account)
-				.ok_or(Error::<T>::NoAssociatedClaim)?;
+			let payload = reward_account.encode();
+
+			// Check the signature
+			Self::verify_signatures(
+				vec![(relay_account.clone(), proof)],
+				reward_info.clone(),
+				payload,
+			)?;
 
 			// Make the first payment
 			let first_payment = T::InitializationPayment::get() * reward_info.total_reward;
@@ -236,6 +239,51 @@ pub mod pallet {
 				relay_account,
 				reward_account,
 				reward_info.total_reward,
+			));
+
+			Ok(Default::default())
+		}
+
+		/// Change reward account by submitting proofs from relay accounts
+		///
+		/// The number of valid proofs needs to be bigger than 'RewardAddressRelayVoteThreshold'
+		/// The account to be changed needs to be submitted as 'previous_account'
+		#[pallet::weight(T::WeightInfo::change_association_with_relay_keys(proofs.len() as u32))]
+		pub fn change_association_with_relay_keys(
+			origin: OriginFor<T>,
+			reward_account: T::AccountId,
+			previous_account: T::AccountId,
+			proofs: Vec<(T::RelayChainAccountId, MultiSignature)>,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
+			// For now I prefer that we dont support providing an existing account here
+			ensure!(
+				AccountsPayable::<T>::get(&reward_account).is_none(),
+				Error::<T>::AlreadyAssociated
+			);
+
+			// To avoid replay attacks, we make sure the payload contains the previous address too
+			// I am assuming no rational user will go back to a previously changed reward address
+			let mut payload = reward_account.encode();
+			payload.append(&mut previous_account.encode());
+
+			// Get the reward info for the account to be changed
+			let reward_info = AccountsPayable::<T>::get(&previous_account)
+				.ok_or(Error::<T>::NoAssociatedClaim)?;
+
+			Self::verify_signatures(proofs, reward_info.clone(), payload)?;
+
+			// Remove fromon payable
+			AccountsPayable::<T>::remove(&previous_account);
+
+			// Insert on payable
+			AccountsPayable::<T>::insert(&reward_account, &reward_info);
+
+			// Emit Event
+			Self::deposit_event(Event::RewardAddressUpdated(
+				previous_account,
+				reward_account,
 			));
 
 			Ok(Default::default())
@@ -298,9 +346,7 @@ pub mod pallet {
 			Ok(Default::default())
 		}
 
-		/// Update reward address. To determine whether its something we want to keep
-		/// Weight argument is 0 since it depends on how the storage trie is composed
-		/// Once we have the number of contributors, we can probably add such a weight here
+		/// Update reward address, proving that the caller owns the current native key
 		#[pallet::weight(T::WeightInfo::update_reward_address())]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
@@ -381,9 +427,11 @@ pub mod pallet {
 
 			Ok(Default::default())
 		}
+
 		/// Initialize the reward distribution storage. It shortcuts whenever an error is found
-		/// We can change this behavior to check this beforehand if we prefer
-		/// We check that the number of contributors inserted is less than T::MaxInitContributors::get()
+
+		/// This does not enforce any checks other than making sure we dont go over funds
+		/// complete_initialization should perform any additional
 		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32))]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
@@ -517,6 +565,54 @@ pub mod pallet {
 		pub fn pot() -> BalanceOf<T> {
 			T::RewardCurrency::free_balance(&Self::account_id())
 		}
+		/// Verify a set of signatures made with relay chain accounts
+		/// We are verifying all the signatures, and then counting
+		/// We could do something more efficient like count as we verify
+		/// In any of the cases the weight will need to account for all the signatures,
+		/// as we dont know beforehand whether they will be valid
+		fn verify_signatures(
+			proofs: Vec<(T::RelayChainAccountId, MultiSignature)>,
+			reward_info: RewardInfo<T>,
+			payload: Vec<u8>,
+		) -> DispatchResult {
+			// The proofs should
+			// 1. be signed by contributors to this address, otherwise they are not counted
+			// 2. Signs a valid native identity
+			// 3. The sum of the valid proofs needs to be bigger than InsufficientNumberOfValidProofs
+
+			// I use a map here for faster lookups
+			let mut voted: BTreeMap<T::RelayChainAccountId, ()> = BTreeMap::new();
+			for (relay_account, signature) in proofs {
+				// We just count votes that we have not seen
+				if voted.get(&relay_account).is_none() {
+					// Maybe I should not error here?
+					ensure!(
+						reward_info
+							.contributed_relay_addresses
+							.contains(&relay_account),
+						Error::<T>::NonContributedAddressProvided
+					);
+
+					// I am erroring here as I think it is good to know the reason in the single-case
+					// signature
+					ensure!(
+						signature.verify(payload.as_slice(), &relay_account.clone().into()),
+						Error::<T>::InvalidClaimSignature
+					);
+					voted.insert(relay_account, ());
+				}
+			}
+
+			// Ensure the votes are sufficient
+			ensure!(
+				Perbill::from_rational(
+					voted.len() as u32,
+					reward_info.contributed_relay_addresses.len() as u32
+				) >= T::RewardAddressRelayVoteThreshold::get(),
+				Error::<T>::InsufficientNumberOfValidProofs
+			);
+			Ok(())
+		}
 	}
 
 	#[pallet::error]
@@ -552,6 +648,10 @@ pub mod pallet {
 		TooManyContributors,
 		/// Provided vesting period is not valid
 		VestingPeriodNonValid,
+		/// User provided a signature from a non-contributor relay account
+		NonContributedAddressProvided,
+		/// User submitted an unsifficient number of proofs to change the reward address
+		InsufficientNumberOfValidProofs,
 	}
 
 	#[pallet::genesis_config]
