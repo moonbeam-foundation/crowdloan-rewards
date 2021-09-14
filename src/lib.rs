@@ -609,7 +609,7 @@ pub mod pallet {
 					voted.len() as u32,
 					reward_info.contributed_relay_addresses.len() as u32
 				) >= T::RewardAddressRelayVoteThreshold::get(),
-				Error::<T>::UnsifficientNumberOfValidProofs
+				Error::<T>::InsufficientNumberOfValidProofs
 			);
 			Ok(())
 		}
@@ -651,7 +651,7 @@ pub mod pallet {
 		/// User provided a signature from a non-contributor relay account
 		NonContributedAddressProvided,
 		/// User submitted an unsifficient number of proofs to change the reward address
-		UnsifficientNumberOfValidProofs,
+		InsufficientNumberOfValidProofs,
 	}
 
 	#[pallet::genesis_config]

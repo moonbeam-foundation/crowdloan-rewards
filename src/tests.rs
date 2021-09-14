@@ -956,7 +956,7 @@ fn test_relay_signatures_can_change_reward_addresses() {
 				1,
 				insufficient_proofs.clone()
 			),
-			Error::<Test>::UnsifficientNumberOfValidProofs
+			Error::<Test>::InsufficientNumberOfValidProofs
 		);
 
 		// With three votes we should passs
