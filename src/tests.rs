@@ -15,6 +15,7 @@
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Unit testing
+
 use crate::*;
 use frame_support::dispatch::{DispatchError, Dispatchable};
 use frame_support::{assert_noop, assert_ok};
@@ -77,6 +78,7 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let signature: MultiSignature = pairs[0].sign(&3u64.encode()).into();
+	let alread_associated_signature: MultiSignature = pairs[0].sign(&1u64.encode()).into();
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
@@ -115,6 +117,18 @@ fn proving_assignation_works() {
 			),
 			Error::<Test>::InvalidClaimSignature
 		);
+
+		// Signature is right, but address already claimed
+		assert_noop!(
+			Crowdloan::associate_native_identity(
+				Origin::signed(4),
+				1,
+				pairs[0].public().into(),
+				alread_associated_signature
+			),
+			Error::<Test>::AlreadyAssociated
+		);
+
 		// Signature is right, prove passes
 		assert_ok!(Crowdloan::associate_native_identity(
 			Origin::signed(4),
@@ -123,7 +137,7 @@ fn proving_assignation_works() {
 			signature.clone()
 		));
 
-		// Signature is right, but address already claimed
+		// Signature is right, but relay address is no longer on unassociated
 		assert_noop!(
 			Crowdloan::associate_native_identity(
 				Origin::signed(4),
@@ -131,8 +145,9 @@ fn proving_assignation_works() {
 				pairs[0].public().into(),
 				signature
 			),
-			Error::<Test>::AlreadyAssociated
+			Error::<Test>::NoAssociatedClaim
 		);
+
 		// now three is payable
 		assert!(Crowdloan::accounts_payable(&3).is_some());
 		assert_eq!(
@@ -885,5 +900,86 @@ fn test_initialization_errors() {
 			Crowdloan::complete_initialization(Origin::root(), init_block),
 			Error::<Test>::RewardVecAlreadyInitialized
 		);
+	});
+}
+
+#[test]
+fn test_relay_signatures_can_change_reward_addresses() {
+	empty().execute_with(|| {
+		// 5 relay keys
+		let pairs = get_ed25519_pairs(5);
+
+		// The init relay block gets inserted
+		roll_to(2);
+		let init_block = Crowdloan::init_vesting_block();
+
+		// We will have all pointint to the same reward account
+		assert_ok!(Crowdloan::initialize_reward_vec(
+			Origin::root(),
+			vec![
+				(pairs[0].public().into(), Some(1), 500u32.into()),
+				(pairs[1].public().into(), Some(1), 500u32.into()),
+				(pairs[2].public().into(), Some(1), 500u32.into()),
+				(pairs[3].public().into(), Some(1), 500u32.into()),
+				(pairs[4].public().into(), Some(1), 500u32.into())
+			],
+		));
+
+		// Complete
+		assert_ok!(Crowdloan::complete_initialization(
+			Origin::root(),
+			init_block + VESTING
+		));
+
+		let reward_info = Crowdloan::accounts_payable(&1).unwrap();
+
+		// We should have all of them as contributors
+		for pair in pairs.clone() {
+			assert!(reward_info
+				.contributed_relay_addresses
+				.contains(&pair.public().into()))
+		}
+
+		// Threshold is set to 50%, so we need at least 3 votes to pass
+		// Let's make sure that we dont pass with 2
+		let mut payload = 2u64.encode();
+		payload.append(&mut 1u64.encode());
+		let mut insufficient_proofs: Vec<([u8; 32], MultiSignature)> = vec![];
+		for i in 0..2 {
+			insufficient_proofs.push((pairs[i].public().into(), pairs[i].sign(&payload).into()));
+		}
+
+		assert_noop!(
+			Crowdloan::change_association_with_relay_keys(
+				Origin::signed(1),
+				2,
+				1,
+				insufficient_proofs.clone()
+			),
+			Error::<Test>::InsufficientNumberOfValidProofs
+		);
+
+		// With three votes we should passs
+		let mut sufficient_proofs = insufficient_proofs.clone();
+
+		// We push one more
+		sufficient_proofs.push((pairs[2].public().into(), pairs[2].sign(&payload).into()));
+
+		// This time should pass
+		assert_ok!(Crowdloan::change_association_with_relay_keys(
+			Origin::signed(1),
+			2,
+			1,
+			sufficient_proofs.clone()
+		));
+
+		// 1 should no longer be payable
+		assert!(Crowdloan::accounts_payable(&1).is_none());
+
+		// 2 should be now payable
+		let reward_info_2 = Crowdloan::accounts_payable(&2).unwrap();
+
+		// The reward info should be identical
+		assert_eq!(reward_info, reward_info_2);
 	});
 }

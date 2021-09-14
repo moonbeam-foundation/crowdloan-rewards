@@ -124,6 +124,7 @@ parameter_types! {
 	pub const TestMinimumReward: u128 = 0;
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
+	pub const TestRewardAddressRelayVoteThreshold: Perbill = Perbill::from_percent(50);
 }
 
 impl Config for Test {
@@ -134,6 +135,7 @@ impl Config for Test {
 	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
+	type RewardAddressRelayVoteThreshold = TestRewardAddressRelayVoteThreshold;
 	type VestingBlockNumber = RelayChainBlockNumber;
 	type VestingBlockProvider =
 		cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Self>;
