@@ -33,7 +33,7 @@ fn geneses() {
 		assert!(System::events().is_empty());
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -80,7 +80,7 @@ fn proving_assignation_works() {
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -162,7 +162,7 @@ fn initializing_multi_relay_to_single_native_address_works() {
 		let pairs = get_ed25519_pairs(3);
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -210,7 +210,7 @@ fn paying_works_step_by_step() {
 		let pairs = get_ed25519_pairs(3);
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -280,7 +280,7 @@ fn paying_works_after_unclaimed_period() {
 		let pairs = get_ed25519_pairs(3);
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -343,7 +343,7 @@ fn paying_late_joiner_works() {
 	empty().execute_with(|| {
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -386,7 +386,7 @@ fn update_address_works() {
 		let pairs = get_ed25519_pairs(3);
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -432,7 +432,7 @@ fn update_address_with_existing_address_fails() {
 		let pairs = get_ed25519_pairs(3);
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -465,7 +465,7 @@ fn update_address_with_existing_with_multi_address_works() {
 		let pairs = get_ed25519_pairs(3);
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -503,7 +503,7 @@ fn initialize_new_addresses() {
 		roll_to(2);
 		// Insert contributors
 		let pairs = get_ed25519_pairs(3);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -544,7 +544,7 @@ fn initialize_new_addresses_handle_dust() {
 		roll_to(2);
 		// Insert contributors
 		let pairs = get_ed25519_pairs(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
 			vec![
@@ -578,7 +578,7 @@ fn initialize_new_addresses_not_matching_funds() {
 		roll_to(2);
 		// Insert contributors
 		let pairs = get_ed25519_pairs(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		// Total supply is 2500.Lets ensure inserting 2495 is not working.
 		assert_ok!(Crowdloan::initialize_reward_vec(
 			Origin::root(),
@@ -601,7 +601,7 @@ fn initialize_new_addresses_with_batch() {
 	empty().execute_with(|| {
 		// This time should succeed trully
 		roll_to(10);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
 				[4u8; 32].into(),
@@ -621,7 +621,7 @@ fn initialize_new_addresses_with_batch() {
 		));
 		assert_eq!(Crowdloan::total_contributors(), 2);
 		// Verify that the second ending block provider had no effect
-		assert_eq!(Crowdloan::end_relay_block(), init_block + VESTING);
+		assert_eq!(Crowdloan::end_vesting_block(), init_block + VESTING);
 
 		// Batch calls always succeed. We just need to check the inner event
 		assert_ok!(
@@ -653,7 +653,7 @@ fn floating_point_arithmetic_works() {
 	empty().execute_with(|| {
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
 				[4u8; 32].into(),
@@ -729,7 +729,7 @@ fn reward_below_vesting_period_works() {
 	empty().execute_with(|| {
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
 			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
 				[4u8; 32].into(),
@@ -819,7 +819,7 @@ fn test_initialization_errors() {
 	empty().execute_with(|| {
 		// The init relay block gets inserted
 		roll_to(2);
-		let init_block = Crowdloan::init_relay_block();
+		let init_block = Crowdloan::init_vesting_block();
 
 		let pot = Crowdloan::pot();
 
