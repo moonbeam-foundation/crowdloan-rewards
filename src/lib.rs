@@ -95,6 +95,7 @@ pub mod pallet {
 
 	pub const PALLET_ID: PalletId = PalletId(*b"Crowdloa");
 
+	// The wrapper around which the reward changing message needs to be wrapped
 	pub const WRAPPED_BYTES: &[u8] = b"<Bytes>";
 
 	/// Configuration trait of this pallet.
