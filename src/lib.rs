@@ -95,6 +95,8 @@ pub mod pallet {
 
 	pub const PALLET_ID: PalletId = PalletId(*b"Crowdloa");
 
+	pub const WRAPPED_BYTES: &[u8] = b"<Bytes>";
+
 	/// Configuration trait of this pallet.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -248,6 +250,8 @@ pub mod pallet {
 		///
 		/// The number of valid proofs needs to be bigger than 'RewardAddressRelayVoteThreshold'
 		/// The account to be changed needs to be submitted as 'previous_account'
+
+		/// Only root-callable
 		#[pallet::weight(T::WeightInfo::change_association_with_relay_keys(proofs.len() as u32))]
 		pub fn change_association_with_relay_keys(
 			origin: OriginFor<T>,
@@ -255,7 +259,7 @@ pub mod pallet {
 			previous_account: T::AccountId,
 			proofs: Vec<(T::RelayChainAccountId, MultiSignature)>,
 		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			ensure_root(origin)?;
 
 			// For now I prefer that we dont support providing an existing account here
 			ensure!(
@@ -265,8 +269,11 @@ pub mod pallet {
 
 			// To avoid replay attacks, we make sure the payload contains the previous address too
 			// I am assuming no rational user will go back to a previously changed reward address
-			let mut payload = reward_account.encode();
+			// b"<Bytes>" + "new_account" + "previous_account" + b"<Bytes>"
+			let mut payload = WRAPPED_BYTES.to_vec();
+			payload.append(&mut reward_account.encode());
 			payload.append(&mut previous_account.encode());
+			payload.append(&mut WRAPPED_BYTES.to_vec());
 
 			// Get the reward info for the account to be changed
 			let reward_info = AccountsPayable::<T>::get(&previous_account)
