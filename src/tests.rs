@@ -942,13 +942,17 @@ fn test_relay_signatures_can_change_reward_addresses() {
 
 		// Threshold is set to 50%, so we need at least 3 votes to pass
 		// Let's make sure that we dont pass with 2
-		let mut payload = 2u64.encode();
+		let mut payload = WRAPPED_BYTES.to_vec();
+		payload.append(&mut 2u64.encode());
 		payload.append(&mut 1u64.encode());
+		payload.append(&mut WRAPPED_BYTES.to_vec());
+
 		let mut insufficient_proofs: Vec<([u8; 32], MultiSignature)> = vec![];
 		for i in 0..2 {
 			insufficient_proofs.push((pairs[i].public().into(), pairs[i].sign(&payload).into()));
 		}
 
+		// Not sufficient proofs presented
 		assert_noop!(
 			Crowdloan::change_association_with_relay_keys(
 				Origin::signed(1),
