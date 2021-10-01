@@ -275,7 +275,7 @@ pub mod pallet {
 
 			// To avoid replay attacks, we make sure the payload contains the previous address too
 			// I am assuming no rational user will go back to a previously changed reward address
-			// b"<Bytes>" + "new_account" + "previous_account" + b"<Bytes>"
+			// b"<Bytes>" + "new_account" + "previous_account" + b"</Bytes>"
 			let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
 			payload.append(&mut reward_account.encode());
 			payload.append(&mut previous_account.encode());
