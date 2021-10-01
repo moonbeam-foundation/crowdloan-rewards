@@ -1,6 +1,6 @@
 #![cfg(feature = "runtime-benchmarks")]
 
-use crate::{BalanceOf, Call, Pallet};
+use crate::{BalanceOf, Call, Pallet, WRAPPED_BYTES};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
 use cumulus_primitives_core::{
 	relay_chain::{v1::HeadData, BlockNumber as RelayChainBlockNumber},
@@ -378,8 +378,10 @@ benchmarks! {
 		let mut proofs: Vec<(T::RelayChainAccountId, MultiSignature)> = Vec::new();
 
 		// Construct payload
-		let mut payload = second_reward_account.clone().encode();
+		let mut payload = WRAPPED_BYTES.to_vec();
+		payload.append(&mut second_reward_account.clone().encode());
 		payload.append(&mut first_reward_account.clone().encode());
+		payload.append(&mut WRAPPED_BYTES.to_vec());
 
 		// Create N sigs for N accounts
 		for i in 0..x {
