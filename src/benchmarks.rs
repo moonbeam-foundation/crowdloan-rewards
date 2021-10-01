@@ -412,7 +412,7 @@ benchmarks! {
 		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
-	}:  _(RawOrigin::Root, second_reward_account.clone(), first_reward_account.clone(), proofs)
+	}:  _(RawOrigin::Signed(first_reward_account.clone()), second_reward_account.clone(), first_reward_account.clone(), proofs)
 	verify {
 		assert!(Pallet::<T>::accounts_payable(&second_reward_account).is_some());
 		assert_eq!(Pallet::<T>::accounts_payable(&second_reward_account).unwrap().total_reward, (100u32*x).into());

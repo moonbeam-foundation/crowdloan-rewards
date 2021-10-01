@@ -126,6 +126,9 @@ pub mod pallet {
 			+ From<AccountId32>
 			+ Ord;
 
+		// The origin that is allowed to change the reward address with relay signatures
+		type RewardAddressChangeOrigin: EnsureOrigin<Self::Origin>;
+
 		/// The type that will be used to track vesting progress
 		type VestingBlockNumber: AtLeast32BitUnsigned + Parameter + Default + Into<BalanceOf<Self>>;
 
@@ -260,7 +263,8 @@ pub mod pallet {
 			previous_account: T::AccountId,
 			proofs: Vec<(T::RelayChainAccountId, MultiSignature)>,
 		) -> DispatchResultWithPostInfo {
-			ensure_root(origin)?;
+			// Check that the origin is the one able to change the reward addrss
+			T::RewardAddressChangeOrigin::ensure_origin(origin)?;
 
 			// For now I prefer that we dont support providing an existing account here
 			ensure!(

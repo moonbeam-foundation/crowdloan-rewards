@@ -952,21 +952,10 @@ fn test_relay_signatures_can_change_reward_addresses() {
 			insufficient_proofs.push((pairs[i].public().into(), pairs[i].sign(&payload).into()));
 		}
 
-		// Ensure non-root cannot change
-		assert_noop!(
-			Crowdloan::change_association_with_relay_keys(
-				Origin::signed(1),
-				2,
-				1,
-				insufficient_proofs.clone()
-			),
-			DispatchError::BadOrigin
-		);
-
 		// Not sufficient proofs presented
 		assert_noop!(
 			Crowdloan::change_association_with_relay_keys(
-				Origin::root(),
+				Origin::signed(1),
 				2,
 				1,
 				insufficient_proofs.clone()
@@ -982,7 +971,7 @@ fn test_relay_signatures_can_change_reward_addresses() {
 
 		// This time should pass
 		assert_ok!(Crowdloan::change_association_with_relay_keys(
-			Origin::root(),
+			Origin::signed(1),
 			2,
 			1,
 			sufficient_proofs.clone()
