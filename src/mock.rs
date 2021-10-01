@@ -27,7 +27,7 @@ use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, OnFinalize, OnInitialize},
 };
-use frame_system::RawOrigin;
+use frame_system::{EnsureSigned, RawOrigin};
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
@@ -136,6 +136,8 @@ impl Config for Test {
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
 	type RewardAddressRelayVoteThreshold = TestRewardAddressRelayVoteThreshold;
+	// The origin that is allowed to change the reward
+	type RewardAddressChangeOrigin = EnsureSigned<Self::AccountId>;
 	type VestingBlockNumber = RelayChainBlockNumber;
 	type VestingBlockProvider =
 		cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Self>;
