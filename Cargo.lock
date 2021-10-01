@@ -4375,7 +4375,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "polkadot-client"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "beefy-primitives",
  "frame-benchmarking",
@@ -4405,7 +4405,7 @@ dependencies = [
 [[package]]
 name = "polkadot-core-primitives"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
@@ -4417,7 +4417,7 @@ dependencies = [
 [[package]]
 name = "polkadot-parachain"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "derive_more",
  "frame-support",
@@ -4433,7 +4433,7 @@ dependencies = [
 [[package]]
 name = "polkadot-primitives"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "bitvec",
  "frame-system",
@@ -4463,7 +4463,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "beefy-primitives",
  "bitvec",
@@ -4533,7 +4533,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime-common"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "bitvec",
  "frame-support",
@@ -4574,7 +4574,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime-parachains"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "bitflags",
  "bitvec",
@@ -6110,7 +6110,7 @@ dependencies = [
 [[package]]
 name = "slot-range-helper"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "enumn",
  "parity-scale-codec",
@@ -7992,7 +7992,7 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "derivative",
  "impl-trait-for-tuples",
@@ -8004,7 +8004,7 @@ dependencies = [
 [[package]]
 name = "xcm-executor"
 version = "0.9.10"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -8021,7 +8021,7 @@ dependencies = [
 [[package]]
 name = "xcm-procedural"
 version = "0.1.0"
-source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#193763da13836e6896859187531a497e41feec36"
+source = "git+https://github.com/purestake/polkadot?branch=moonbeam-polkadot-v0.9.10#ab3c7628ea3c20305f9c73cd0c5a7951576c8505"
 dependencies = [
  "proc-macro2",
  "quote",
