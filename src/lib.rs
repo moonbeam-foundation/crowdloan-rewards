@@ -96,7 +96,8 @@ pub mod pallet {
 	pub const PALLET_ID: PalletId = PalletId(*b"Crowdloa");
 
 	// The wrapper around which the reward changing message needs to be wrapped
-	pub const WRAPPED_BYTES: &[u8] = b"<Bytes>";
+	pub const WRAPPED_BYTES_START: &[u8] = b"<Bytes>";
+	pub const WRAPPED_BYTES_END: &[u8] = b"</Bytes>";
 
 	/// Configuration trait of this pallet.
 	#[pallet::config]
@@ -275,10 +276,10 @@ pub mod pallet {
 			// To avoid replay attacks, we make sure the payload contains the previous address too
 			// I am assuming no rational user will go back to a previously changed reward address
 			// b"<Bytes>" + "new_account" + "previous_account" + b"<Bytes>"
-			let mut payload = WRAPPED_BYTES.to_vec();
+			let mut payload = WRAPPED_BYTES_START.to_vec();
 			payload.append(&mut reward_account.encode());
 			payload.append(&mut previous_account.encode());
-			payload.append(&mut WRAPPED_BYTES.to_vec());
+			payload.append(&mut WRAPPED_BYTES_END.to_vec());
 
 			// Get the reward info for the account to be changed
 			let reward_info = AccountsPayable::<T>::get(&previous_account)
