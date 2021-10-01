@@ -255,7 +255,7 @@ pub mod pallet {
 		/// The number of valid proofs needs to be bigger than 'RewardAddressRelayVoteThreshold'
 		/// The account to be changed needs to be submitted as 'previous_account'
 
-		/// Only root-callable
+		/// Origin must be RewardAddressChangeOrigin
 		#[pallet::weight(T::WeightInfo::change_association_with_relay_keys(proofs.len() as u32))]
 		pub fn change_association_with_relay_keys(
 			origin: OriginFor<T>,
