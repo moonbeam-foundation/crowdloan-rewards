@@ -617,18 +617,21 @@ fn initialize_new_addresses_with_batch() {
 		// This time should succeed trully
 		roll_to(10);
 		let init_block = Crowdloan::init_vesting_block();
-		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+		assert_ok!(mock::Call::Utility(UtilityCall::batch_all{
+			calls: vec![
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[4u8; 32].into(),
 				Some(3),
 				1250
-			)],)),
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+			)],}),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[5u8; 32].into(),
 				Some(1),
 				1250
-			)],))
-		]))
+			)],})
+		]})
 		.dispatch(Origin::root()));
 		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
@@ -640,9 +643,11 @@ fn initialize_new_addresses_with_batch() {
 
 		// Batch calls always succeed. We just need to check the inner event
 		assert_ok!(
-			mock::Call::Utility(UtilityCall::batch(vec![mock::Call::Crowdloan(
-				crate::Call::initialize_reward_vec(vec![([4u8; 32].into(), Some(3), 500)])
-			)]))
+			mock::Call::Utility(UtilityCall::batch{
+				calls: vec![mock::Call::Crowdloan(
+				crate::Call::initialize_reward_vec {
+					rewards: vec![([4u8; 32].into(), Some(3), 500)]}
+			)]})
 			.dispatch(Origin::root())
 		);
 
@@ -669,24 +674,28 @@ fn floating_point_arithmetic_works() {
 		// The init relay block gets inserted
 		roll_to(2);
 		let init_block = Crowdloan::init_vesting_block();
-		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+		assert_ok!(mock::Call::Utility(UtilityCall::batch_all{
+			calls: vec![
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[4u8; 32].into(),
 				Some(1),
 				1190
-			)])),
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+			)]}),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[5u8; 32].into(),
 				Some(2),
 				1185
-			)])),
+			)]}),
 			// We will work with this. This has 100/8=12.5 payable per block
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[3u8; 32].into(),
 				Some(3),
 				125
-			)]))
-		]))
+			)]})
+		]})
 		.dispatch(Origin::root()));
 		assert_ok!(Crowdloan::complete_initialization(
 			Origin::root(),
@@ -745,24 +754,28 @@ fn reward_below_vesting_period_works() {
 		// The init relay block gets inserted
 		roll_to(2);
 		let init_block = Crowdloan::init_vesting_block();
-		assert_ok!(mock::Call::Utility(UtilityCall::batch_all(vec![
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+		assert_ok!(mock::Call::Utility(UtilityCall::batch_all{
+			calls: vec![
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[4u8; 32].into(),
 				Some(1),
 				1247
-			)])),
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+			)]}),
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[5u8; 32].into(),
 				Some(2),
 				1247
-			)])),
+			)]}),
 			// We will work with this. This has 5/8=0.625 payable per block
-			mock::Call::Crowdloan(crate::Call::initialize_reward_vec(vec![(
+			mock::Call::Crowdloan(crate::Call::initialize_reward_vec{
+				rewards: vec![(
 				[3u8; 32].into(),
 				Some(3),
 				6
-			)]))
-		]))
+			)]})
+		]})
 		.dispatch(Origin::root()));
 
 		assert_ok!(Crowdloan::complete_initialization(
