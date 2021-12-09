@@ -25,7 +25,7 @@ use frame_support::{
 	dispatch::UnfilteredDispatchable,
 	inherent::{InherentData, ProvideInherent},
 	parameter_types,
-	traits::{GenesisBuild, OnFinalize, OnInitialize},
+	traits::{GenesisBuild, Nothing, OnFinalize, OnInitialize},
 };
 use frame_system::{EnsureSigned, RawOrigin};
 use sp_core::{ed25519, Pair, H256};
@@ -78,7 +78,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Nothing;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -148,6 +148,7 @@ impl pallet_utility::Config for Test {
 	type Event = Event;
 	type Call = Call;
 	type WeightInfo = ();
+	type PalletsOrigin = OriginCaller;
 }
 
 fn genesis(funded_amount: Balance) -> sp_io::TestExternalities {
