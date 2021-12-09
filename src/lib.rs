@@ -130,6 +130,9 @@ pub mod pallet {
 		// The origin that is allowed to change the reward address with relay signatures
 		type RewardAddressChangeOrigin: EnsureOrigin<Self::Origin>;
 
+		// The origin that is allowed to change the reward address with relay signatures
+		type RewardAddressAssociateOrigin: EnsureOrigin<Self::Origin>;
+
 		/// The type that will be used to track vesting progress
 		type VestingBlockNumber: AtLeast32BitUnsigned + Parameter + Default + Into<BalanceOf<Self>>;
 
@@ -179,8 +182,9 @@ pub mod pallet {
 			relay_account: T::RelayChainAccountId,
 			proof: MultiSignature,
 		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-
+			// Check that the origin is the one able to asociate the reward addrss
+			T::RewardAddressChangeOrigin::ensure_origin(origin)?;
+			
 			// Check the proof:
 			// 1. Is signed by an actual unassociated contributor
 			// 2. Signs a valid native identity
@@ -206,7 +210,10 @@ pub mod pallet {
 				Error::<T>::AlreadyAssociated
 			);
 
-			let payload = reward_account.encode();
+			// b"<Bytes>" + "new_account" + b"</Bytes>"
+			let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+			payload.append(&mut reward_account.encode());
+			payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
 
 			// Check the signature
 			Self::verify_signatures(
