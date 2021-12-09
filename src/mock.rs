@@ -25,7 +25,7 @@ use frame_support::{
 	dispatch::UnfilteredDispatchable,
 	inherent::{InherentData, ProvideInherent},
 	parameter_types,
-	traits::{GenesisBuild, OnFinalize, OnInitialize, Nothing},
+	traits::{GenesisBuild, Nothing, OnFinalize, OnInitialize},
 };
 use frame_system::{EnsureSigned, RawOrigin};
 use sp_core::{ed25519, Pair, H256};
