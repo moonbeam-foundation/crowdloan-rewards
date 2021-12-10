@@ -185,7 +185,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			// Check that the origin is the one able to asociate the reward addrss
 			T::RewardAddressChangeOrigin::ensure_origin(origin)?;
-			
+
 			// Check the proof:
 			// 1. Is signed by an actual unassociated contributor
 			// 2. Signs a valid native identity

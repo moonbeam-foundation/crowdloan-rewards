@@ -78,8 +78,8 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
-		payload.append(&mut 3u64.encode());
-		payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
+	payload.append(&mut 3u64.encode());
+	payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
 	let signature: MultiSignature = pairs[0].sign(&payload).into();
 	let alread_associated_signature: MultiSignature = pairs[0].sign(&1u64.encode()).into();
 	empty().execute_with(|| {
@@ -358,8 +358,8 @@ fn paying_works_after_unclaimed_period() {
 fn paying_late_joiner_works() {
 	let pairs = get_ed25519_pairs(3);
 	let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
-		payload.append(&mut 3u64.encode());
-		payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
+	payload.append(&mut 3u64.encode());
+	payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
 	let signature: MultiSignature = pairs[0].sign(&payload).into();
 	empty().execute_with(|| {
 		// Insert contributors
