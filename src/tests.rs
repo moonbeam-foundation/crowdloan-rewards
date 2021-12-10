@@ -977,3 +977,14 @@ fn test_relay_signatures_can_change_reward_addresses() {
 		assert_eq!(reward_info, reward_info_2);
 	});
 }
+
+// This test is to ensure that no matter if we insert AccountId32 or [u8; 32] as RelayAccountId
+// Perhaps this test should leave in Moonbeam rather than in here, or maybe even remove it
+#[test]
+fn test_accountid32_decodes_equal_to_u8_32() {
+	empty().execute_with(|| {
+		let account =  [1u8; 32];
+		let account2: sp_runtime::AccountId32 =  [1u8; 32].into();
+		assert_eq!(account.encode(), account2.encode());
+	});
+}

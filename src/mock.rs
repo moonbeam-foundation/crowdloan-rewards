@@ -33,7 +33,7 @@ use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
+	Perbill, MultiSignature,
 };
 use sp_std::convert::{From, TryInto};
 
@@ -135,6 +135,7 @@ impl Config for Test {
 	type MinimumReward = TestMinimumReward;
 	type RewardCurrency = Balances;
 	type RelayChainAccountId = [u8; 32];
+	type RelaySignature = MultiSignature;
 	type RewardAddressRelayVoteThreshold = TestRewardAddressRelayVoteThreshold;
 	// The origin that is allowed to change the reward
 	type RewardAddressChangeOrigin = EnsureSigned<Self::AccountId>;
