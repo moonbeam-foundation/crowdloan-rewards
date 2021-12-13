@@ -78,6 +78,7 @@ fn geneses() {
 fn proving_assignation_works() {
 	let pairs = get_ed25519_pairs(3);
 	let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+	payload.append(&mut TestSigantureNetworkIdentifier::get().to_vec());
 	payload.append(&mut 3u64.encode());
 	payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
 	let signature: MultiSignature = pairs[0].sign(&payload).into();
@@ -358,6 +359,7 @@ fn paying_works_after_unclaimed_period() {
 fn paying_late_joiner_works() {
 	let pairs = get_ed25519_pairs(3);
 	let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+	payload.append(&mut TestSigantureNetworkIdentifier::get().to_vec());
 	payload.append(&mut 3u64.encode());
 	payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
 	let signature: MultiSignature = pairs[0].sign(&payload).into();
@@ -939,6 +941,7 @@ fn test_relay_signatures_can_change_reward_addresses() {
 		// Threshold is set to 50%, so we need at least 3 votes to pass
 		// Let's make sure that we dont pass with 2
 		let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+		payload.append(&mut TestSigantureNetworkIdentifier::get().to_vec());
 		payload.append(&mut 2u64.encode());
 		payload.append(&mut 1u64.encode());
 		payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());

@@ -125,6 +125,7 @@ parameter_types! {
 	pub const TestInitialized: bool = false;
 	pub const TestInitializationPayment: Perbill = Perbill::from_percent(20);
 	pub const TestRewardAddressRelayVoteThreshold: Perbill = Perbill::from_percent(50);
+	pub const TestSigantureNetworkIdentifier: &'static [u8] = b"test-";
 }
 
 impl Config for Test {
@@ -140,6 +141,8 @@ impl Config for Test {
 	type RewardAddressAssociateOrigin = EnsureSigned<Self::AccountId>;
 	// The origin that is allowed to change the reward
 	type RewardAddressChangeOrigin = EnsureSigned<Self::AccountId>;
+	type SignatureNetworkIdentifier = TestSigantureNetworkIdentifier;
+
 	type VestingBlockNumber = RelayChainBlockNumber;
 	type VestingBlockProvider =
 		cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Self>;

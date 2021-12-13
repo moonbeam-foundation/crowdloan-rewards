@@ -331,6 +331,7 @@ benchmarks! {
 
 		// Construct payload
 		let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+		payload.append(&mut T::SignatureNetworkIdentifier::get().to_vec());
 		payload.append(&mut caller.clone().encode());
 		payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
 
@@ -384,6 +385,7 @@ benchmarks! {
 
 		// Construct payload
 		let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+		payload.append(&mut T::SignatureNetworkIdentifier::get().to_vec());
 		payload.append(&mut second_reward_account.clone().encode());
 		payload.append(&mut first_reward_account.clone().encode());
 		payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
