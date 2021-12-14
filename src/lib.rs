@@ -130,7 +130,7 @@ pub mod pallet {
 		// The origin that is allowed to change the reward address with relay signatures
 		type RewardAddressChangeOrigin: EnsureOrigin<Self::Origin>;
 
-		/// Network Identifier to be appended into the signatures for reward addres change/association
+		/// Network Identifier to be appended into the signatures for reward address change/association
 		/// Prevents replay attacks from one network to the other
 		#[pallet::constant]
 		type SignatureNetworkIdentifier: Get<&'static [u8]>;
