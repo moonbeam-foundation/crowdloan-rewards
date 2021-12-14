@@ -329,8 +329,14 @@ benchmarks! {
 		// The caller that will associate the account
 		let caller: T::AccountId = create_funded_user::<T>("user", SEED, 100u32.into());
 
+		// Construct payload
+		let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+		payload.append(&mut T::SignatureNetworkIdentifier::get().to_vec());
+		payload.append(&mut caller.clone().encode());
+		payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
+
 		// Create a fake sig for such an account
-		let (relay_account, signature) = create_sig::<T>(SEED, caller.clone().encode());
+		let (relay_account, signature) = create_sig::<T>(SEED, payload);
 
 		// We verified there is no dependency of the number of contributors already inserted in associate_native_identity
 		// Create 1 contributor
@@ -379,6 +385,7 @@ benchmarks! {
 
 		// Construct payload
 		let mut payload = WRAPPED_BYTES_PREFIX.to_vec();
+		payload.append(&mut T::SignatureNetworkIdentifier::get().to_vec());
 		payload.append(&mut second_reward_account.clone().encode());
 		payload.append(&mut first_reward_account.clone().encode());
 		payload.append(&mut WRAPPED_BYTES_POSTFIX.to_vec());
