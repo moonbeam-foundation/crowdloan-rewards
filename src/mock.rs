@@ -63,12 +63,12 @@ parameter_types! {
 impl cumulus_pallet_parachain_system::Config for Test {
 	type SelfParaId = ParachainId;
 	type Event = Event;
-	type OnValidationData = ();
 	type OutboundXcmpMessageSource = ();
 	type XcmpMessageHandler = ();
 	type ReservedXcmpWeight = ();
 	type DmpMessageHandler = ();
 	type ReservedDmpWeight = ();
+	type OnSystemEvent = ();
 }
 
 parameter_types! {
@@ -101,6 +101,7 @@ impl frame_system::Config for Test {
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {

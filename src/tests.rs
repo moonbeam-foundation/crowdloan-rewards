@@ -656,14 +656,14 @@ fn initialize_new_addresses_with_batch() {
 			pallet_utility::Event::ItemCompleted,
 			pallet_utility::Event::ItemCompleted,
 			pallet_utility::Event::BatchCompleted,
-			pallet_utility::Event::BatchInterrupted(
-				0,
-				DispatchError::Module {
+			pallet_utility::Event::BatchInterrupted{
+				index: 0,
+				error: DispatchError::Module {
 					index: 2,
 					error: 8,
 					message: None,
 				},
-			),
+			},
 		];
 		assert_eq!(batch_events(), expected);
 	});
