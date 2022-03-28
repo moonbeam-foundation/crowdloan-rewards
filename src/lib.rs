@@ -90,6 +90,7 @@ pub mod pallet {
 	use sp_std::vec;
 	use sp_std::vec::Vec;
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	// The crowdloan rewards pallet
 	pub struct Pallet<T>(PhantomData<T>);
 
