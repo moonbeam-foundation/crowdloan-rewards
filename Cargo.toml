@@ -1,6 +1,6 @@
 [package]
 authors = ["PureStake"]
-edition = "2018"
+edition = "2021"
 name = "pallet-crowdloan-rewards"
 version = '0.6.0'
 description = "Reward citizens who participated in a crowdloan to acquire a parachain slot o nthe backing relay chain."
