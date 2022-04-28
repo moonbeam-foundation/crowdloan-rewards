@@ -3,7 +3,7 @@
 use crate::{BalanceOf, Call, Pallet, WRAPPED_BYTES_POSTFIX, WRAPPED_BYTES_PREFIX};
 use cumulus_pallet_parachain_system::Pallet as RelayPallet;
 use cumulus_primitives_core::{
-	relay_chain::{v1::HeadData, BlockNumber as RelayChainBlockNumber},
+	relay_chain::{v2::HeadData, BlockNumber as RelayChainBlockNumber},
 	PersistedValidationData,
 };
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
