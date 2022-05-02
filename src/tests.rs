@@ -22,7 +22,7 @@ use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
 use sp_core::Pair;
-use sp_runtime::MultiSignature;
+use sp_runtime::{MultiSignature, ModuleError};
 
 // Constant that reflects the desired vesting period for the tests
 // Most tests complete initialization passing initRelayBlock + VESTING as the endRelayBlock
@@ -656,14 +656,14 @@ fn initialize_new_addresses_with_batch() {
 			pallet_utility::Event::ItemCompleted,
 			pallet_utility::Event::ItemCompleted,
 			pallet_utility::Event::BatchCompleted,
-			pallet_utility::Event::BatchInterrupted(
-				0,
-				DispatchError::Module {
+			pallet_utility::Event::BatchInterrupted {
+				index: 0,
+				error: DispatchError::Module(ModuleError {
 					index: 2,
-					error: 8,
+					error: [8, 0, 0, 0],
 					message: None,
-				},
-			),
+				}),
+			},
 		];
 		assert_eq!(batch_events(), expected);
 	});
