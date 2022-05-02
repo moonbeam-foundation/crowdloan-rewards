@@ -25,7 +25,7 @@ use frame_support::{
 	dispatch::UnfilteredDispatchable,
 	inherent::{InherentData, ProvideInherent},
 	parameter_types,
-	traits::{GenesisBuild, Nothing, OnFinalize, OnInitialize},
+	traits::{ConstU32, GenesisBuild, Nothing, OnFinalize, OnInitialize},
 };
 use frame_system::{EnsureSigned, RawOrigin};
 use sp_core::{ed25519, Pair, H256};
@@ -63,7 +63,7 @@ parameter_types! {
 impl cumulus_pallet_parachain_system::Config for Test {
 	type SelfParaId = ParachainId;
 	type Event = Event;
-	type OnValidationData = ();
+	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = ();
 	type XcmpMessageHandler = ();
 	type ReservedXcmpWeight = ();
@@ -101,6 +101,7 @@ impl frame_system::Config for Test {
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_types! {
