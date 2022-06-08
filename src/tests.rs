@@ -22,7 +22,7 @@ use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
 use sp_core::Pair;
-use sp_runtime::{MultiSignature, ModuleError};
+use sp_runtime::{ModuleError, MultiSignature};
 
 // Constant that reflects the desired vesting period for the tests
 // Most tests complete initialization passing initRelayBlock + VESTING as the endRelayBlock
