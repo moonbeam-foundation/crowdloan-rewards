@@ -234,7 +234,7 @@ pub mod pallet {
 			let first_payment = T::InitializationPayment::get() * reward_info.total_reward;
 
 			T::RewardCurrency::transfer(
-				&PALLET_ID.into_account(),
+				&PALLET_ID.into_account_truncating(),
 				&reward_account,
 				first_payment,
 				AllowDeath,
@@ -365,7 +365,7 @@ pub mod pallet {
 			// This pallet controls an amount of funds and transfers them to each of the contributors
 			//TODO: contributors should have the balance locked for tranfers but not for democracy
 			T::RewardCurrency::transfer(
-				&PALLET_ID.into_account(),
+				&PALLET_ID.into_account_truncating(),
 				&payee,
 				payable_amount,
 				AllowDeath,
@@ -442,7 +442,7 @@ pub mod pallet {
 
 			// Burn the difference
 			let imbalance = T::RewardCurrency::withdraw(
-				&PALLET_ID.into_account(),
+				&PALLET_ID.into_account_truncating(),
 				reward_difference,
 				WithdrawReasons::TRANSFER,
 				AllowDeath,
@@ -526,7 +526,7 @@ pub mod pallet {
 				let initial_payment = if let Some(native_account) = native_account {
 					let first_payment = T::InitializationPayment::get() * (*reward);
 					T::RewardCurrency::transfer(
-						&PALLET_ID.into_account(),
+						&PALLET_ID.into_account_truncating(),
 						&native_account,
 						first_payment,
 						AllowDeath,
@@ -588,7 +588,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// The account ID that holds the Crowdloan's funds
 		pub fn account_id() -> T::AccountId {
-			PALLET_ID.into_account()
+			PALLET_ID.into_account_truncating()
 		}
 		/// The Account Id's balance
 		pub fn pot() -> BalanceOf<T> {
