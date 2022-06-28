@@ -24,12 +24,12 @@ ed25519-dalek = { version = "1.0.1", default-features = false, features = ["u64_
 sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true , branch = "polkadot-v0.9.23" }
 
 # These cumulus dependencies to be removed with https://github.com/PureStake/crowdloan-rewards/pull/44
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", default-features = false, optional = true , branch = "polkadot-v0.9.23" }
-cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", default-features = false, optional = true , branch = "polkadot-v0.9.23" }
-cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", default-features = false, optional = true , branch = "polkadot-v0.9.23" }
+cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", default-features = false, optional = true , branch = "moonbeam-polkadot-v0.9.23" }
+cumulus-pallet-parachain-system = { git = "https://github.com/purestake/cumulus", default-features = false, optional = true , branch = "moonbeam-polkadot-v0.9.23" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/purestake/cumulus", default-features = false, optional = true , branch = "moonbeam-polkadot-v0.9.23" }
 
 [dev-dependencies]
-cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.23" }
+cumulus-test-relay-sproof-builder = { git = "https://github.com/purestake/cumulus", branch = "moonbeam-polkadot-v0.9.23" }
 
 [features]
 default = ["std"]
