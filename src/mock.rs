@@ -16,10 +16,6 @@
 
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
-use cumulus_primitives_core::relay_chain::BlockNumber as RelayChainBlockNumber;
-use cumulus_primitives_core::PersistedValidationData;
-use cumulus_primitives_parachain_inherent::ParachainInherentData;
-use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
 	construct_runtime,
 	dispatch::UnfilteredDispatchable,
@@ -51,25 +47,9 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Crowdloan: pallet_crowdloan_rewards::{Pallet, Call, Storage, Event<T>},
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>},
 		Utility: pallet_utility::{Pallet, Call, Storage, Event},
 	}
 );
-
-parameter_types! {
-	pub ParachainId: cumulus_primitives_core::ParaId = 100.into();
-}
-
-impl cumulus_pallet_parachain_system::Config for Test {
-	type SelfParaId = ParachainId;
-	type Event = Event;
-	type OnSystemEvent = ();
-	type OutboundXcmpMessageSource = ();
-	type XcmpMessageHandler = ();
-	type ReservedXcmpWeight = ();
-	type DmpMessageHandler = ();
-	type ReservedDmpWeight = ();
-}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -98,7 +78,7 @@ impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
+	type OnSetCode = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type MaxConsumers = ConstU32<16>;
@@ -118,6 +98,19 @@ impl pallet_balances::Config for Test {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+}
+
+
+pub struct MockedBlockProvider;
+impl sp_runtime::traits::BlockNumberProvider for MockedBlockProvider {
+	type BlockNumber = u64;
+
+	fn current_block_number() -> Self::BlockNumber {
+		System::current_block_number().saturating_add(1)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set_block_number(_block: Self::BlockNumber) {}
 }
 
 parameter_types! {
@@ -144,9 +137,8 @@ impl Config for Test {
 	type RewardAddressChangeOrigin = EnsureSigned<Self::AccountId>;
 	type SignatureNetworkIdentifier = TestSigantureNetworkIdentifier;
 
-	type VestingBlockNumber = RelayChainBlockNumber;
-	type VestingBlockProvider =
-		cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Self>;
+	type VestingBlockNumber =  u64;
+	type VestingBlockProvider = MockedBlockProvider;
 	type WeightInfo = ();
 }
 
@@ -220,46 +212,11 @@ pub(crate) fn batch_events() -> Vec<pallet_utility::Event> {
 }
 
 pub(crate) fn roll_to(n: u64) {
-	while System::block_number() < n {
-		// Relay chain Stuff. I might actually set this to a number different than N
-		let sproof_builder = RelayStateSproofBuilder::default();
-		let (relay_parent_storage_root, relay_chain_state) =
-			sproof_builder.into_state_root_and_proof();
-		let vfp = PersistedValidationData {
-			relay_parent_number: (System::block_number() + 1u64) as RelayChainBlockNumber,
-			relay_parent_storage_root,
-			..Default::default()
-		};
-		let inherent_data = {
-			let mut inherent_data = InherentData::default();
-			let system_inherent_data = ParachainInherentData {
-				validation_data: vfp.clone(),
-				relay_chain_state,
-				downward_messages: Default::default(),
-				horizontal_messages: Default::default(),
-			};
-			inherent_data
-				.put_data(
-					cumulus_primitives_parachain_inherent::INHERENT_IDENTIFIER,
-					&system_inherent_data,
-				)
-				.expect("failed to put VFP inherent");
-			inherent_data
-		};
-
-		ParachainSystem::on_initialize(System::block_number());
-		ParachainSystem::create_inherent(&inherent_data)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		ParachainSystem::on_finalize(System::block_number());
-
-		Crowdloan::on_finalize(System::block_number());
-		Balances::on_finalize(System::block_number());
-		System::on_finalize(System::block_number());
-		System::set_block_number(System::block_number() + 1);
-		System::on_initialize(System::block_number());
-		Balances::on_initialize(System::block_number());
+	let mut current_block_number = System::block_number();
+	while current_block_number < n {
 		Crowdloan::on_initialize(System::block_number());
+		System::set_block_number(current_block_number);
+		Crowdloan::on_finalize(System::block_number());
+		current_block_number = current_block_number.saturating_add(1);
 	}
 }

@@ -1,12 +1,6 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::{BalanceOf, Call, Pallet, WRAPPED_BYTES_POSTFIX, WRAPPED_BYTES_PREFIX};
-use cumulus_pallet_parachain_system::Pallet as RelayPallet;
-use cumulus_primitives_core::{
-	relay_chain::{v2::HeadData, BlockNumber as RelayChainBlockNumber},
-	PersistedValidationData,
-};
-use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use ed25519_dalek::Signer;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
@@ -211,13 +205,7 @@ benchmarks! {
 		insert_contributors::<T>(contributors)?;
 
 		// We need to create the first block inherent, to initialize the initRelayBlock
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 	}:  _(RawOrigin::Root, 10u32.into())
@@ -245,13 +233,7 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 		// Create 4th relay block, by now the user should have vested some amount
@@ -291,13 +273,7 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 
@@ -350,13 +326,7 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
@@ -410,13 +380,7 @@ benchmarks! {
 		close_initialization::<T>(10u32.into())?;
 
 		// First inherent
-		let first_block_inherent = create_inherent_data::<T>(1u32);
-		RelayPallet::<T>::on_initialize(T::BlockNumber::one());
-		RelayPallet::<T>::create_inherent(&first_block_inherent)
-			.expect("got an inherent")
-			.dispatch_bypass_filter(RawOrigin::None.into())
-			.expect("dispatch succeeded");
-		RelayPallet::<T>::on_finalize(T::BlockNumber::one());
+		T::VestingBlockProvider::set_block_number(1u32.into());
 		Pallet::<T>::on_finalize(T::BlockNumber::one());
 
 	}:  _(RawOrigin::Signed(first_reward_account.clone()), second_reward_account.clone(), first_reward_account.clone(), proofs)
