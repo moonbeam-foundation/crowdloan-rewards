@@ -675,7 +675,6 @@ fn floating_point_arithmetic_works() {
 		// The init relay block gets inserted
 		roll_to(2);
 		let init_block = Crowdloan::init_vesting_block();
-		println!("init relay block {:?}", init_block);
 		assert_ok!(mock::Call::Utility(UtilityCall::batch_all {
 			calls: vec![
 				mock::Call::Crowdloan(crate::Call::initialize_reward_vec {
@@ -707,11 +706,6 @@ fn floating_point_arithmetic_works() {
 		// Total claimed reward: 25+25 = 50
 		roll_to(4);
 
-		use sp_runtime::traits::BlockNumberProvider;
-		println!(
-			"the current block is {:?}",
-			MockedBlockProvider::current_block_number()
-		);
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
 		assert_eq!(
