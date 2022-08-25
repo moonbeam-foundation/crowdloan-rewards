@@ -17,13 +17,10 @@
 //! Test utilities
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
-	construct_runtime,
-	dispatch::UnfilteredDispatchable,
-	inherent::{InherentData, ProvideInherent},
-	parameter_types,
+	construct_runtime, parameter_types,
 	traits::{ConstU32, GenesisBuild, Nothing, OnFinalize, OnInitialize},
 };
-use frame_system::{EnsureSigned, RawOrigin};
+use frame_system::EnsureSigned;
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
@@ -100,7 +97,6 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
-
 pub struct MockedBlockProvider;
 impl sp_runtime::traits::BlockNumberProvider for MockedBlockProvider {
 	type BlockNumber = u64;
@@ -137,7 +133,7 @@ impl Config for Test {
 	type RewardAddressChangeOrigin = EnsureSigned<Self::AccountId>;
 	type SignatureNetworkIdentifier = TestSigantureNetworkIdentifier;
 
-	type VestingBlockNumber =  u64;
+	type VestingBlockNumber = u64;
 	type VestingBlockProvider = MockedBlockProvider;
 	type WeightInfo = ();
 }

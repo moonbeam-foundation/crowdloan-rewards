@@ -708,7 +708,10 @@ fn floating_point_arithmetic_works() {
 		roll_to(4);
 
 		use sp_runtime::traits::BlockNumberProvider;
-		println!("the current block is {:?}", MockedBlockProvider::current_block_number());
+		println!(
+			"the current block is {:?}",
+			MockedBlockProvider::current_block_number()
+		);
 		assert_ok!(Crowdloan::claim(Origin::signed(3)));
 
 		assert_eq!(
