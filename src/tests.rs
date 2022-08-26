@@ -26,7 +26,7 @@ use sp_runtime::{ModuleError, MultiSignature};
 
 // Constant that reflects the desired vesting period for the tests
 // Most tests complete initialization passing initRelayBlock + VESTING as the endRelayBlock
-const VESTING: u32 = 8;
+const VESTING: u64 = 8;
 
 #[test]
 fn geneses() {
