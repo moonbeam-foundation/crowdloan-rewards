@@ -65,7 +65,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialize_reward_vec(x: u32) -> Weight {
 		Weight::from_ref_time(143_109_000)
 			// Standard Error: 21_000
-			.saturating_add(Weight::from_ref_time(72_298_000_u64.saturating_mul(x as u64)))
+			.saturating_add(Weight::from_ref_time(
+				72_298_000_u64.saturating_mul(x as u64),
+			))
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().reads(x as u64))
 			.saturating_add(T::DbWeight::get().writes(5))
@@ -94,7 +96,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn change_association_with_relay_keys(x: u32) -> Weight {
 		Weight::from_ref_time(0)
 			// Standard Error: 7_000
-			.saturating_add(Weight::from_ref_time(47_373_000_u64.saturating_mul(x as u64)))
+			.saturating_add(Weight::from_ref_time(
+				47_373_000_u64.saturating_mul(x as u64),
+			))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -105,7 +109,9 @@ impl WeightInfo for () {
 	fn initialize_reward_vec(x: u32) -> Weight {
 		Weight::from_ref_time(143_109_000)
 			// Standard Error: 21_000
-			.saturating_add(Weight::from_ref_time(72_298_000_u64.saturating_mul(x as u64)))
+			.saturating_add(Weight::from_ref_time(
+				72_298_000_u64.saturating_mul(x as u64),
+			))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads(x as u64))
 			.saturating_add(RocksDbWeight::get().writes(5))
@@ -134,7 +140,9 @@ impl WeightInfo for () {
 	fn change_association_with_relay_keys(x: u32) -> Weight {
 		Weight::from_ref_time(0)
 			// Standard Error: 7_000
-			.saturating_add(Weight::from_ref_time(47_373_000_u64.saturating_mul(x as u64)))
+			.saturating_add(Weight::from_ref_time(
+				47_373_000_u64.saturating_mul(x as u64),
+			))
 			.saturating_add(RocksDbWeight::get().reads(6))
 			.saturating_add(RocksDbWeight::get().writes(4))
 	}
