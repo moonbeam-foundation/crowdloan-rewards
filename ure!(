@@ -1,0 +1,64 @@
+[1mdiff --git a/src/lib.rs b/src/lib.rs[m
+[1mindex 9bb08b5..5a87c83 100644[m
+[1m--- a/src/lib.rs[m
+[1m+++ b/src/lib.rs[m
+[36m@@ -79,7 +79,7 @@[m [mpub mod pallet {[m
+ 	};[m
+ 	use frame_system::pallet_prelude::*;[m
+ 	use sp_core::crypto::AccountId32;[m
+[31m-	use sp_runtime::traits::{AccountIdConversion, Saturating, Verify};[m
+[32m+[m	[32muse sp_runtime::traits::{AccountIdConversion, Saturating, Verify, CheckedAdd};[m
+ 	use sp_runtime::{MultiSignature, Perbill};[m
+ 	use sp_std::vec::Vec;[m
+ [m
+[36m@@ -240,7 +240,7 @@[m [mpub mod pallet {[m
+ 				AccountsPayable::<T>::get(&payee).ok_or(Error::<T>::NoAssociatedClaim)?;[m
+ 			ensure!([m
+ 				info.claimed_reward < info.total_reward,[m
+[31m-				Error::<T>::RewardsAlreadyClaimed[m
+[32m+[m				[32mError::<T>::[m
+ 			);[m
+ [m
+ 			// Vesting is done in relation with the relay chain slot[m
+[36m@@ -354,20 +354,37 @@[m [mpub mod pallet {[m
+ [m
+ 			let incoming_rewards: BalanceOf<T> = rewards[m
+ 				.iter()[m
+[31m-				.fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {[m
+[31m-					acc + *reward[m
+[32m+[m				[32m.try_fold(0u32.into(), |acc: BalanceOf<T>, (_, _, reward)| {[m
+[32m+[m					[32macc.checked_add(*reward)[m
+ 				});[m
+ [m
+[32m+[m			[32m// This is where we need to ensure we do not overflow. All subsequent payments[m
+[32m+[m			[32m// will be based on these checks.[m
+[32m+[m[41m			[m
+[32m+[m			[32m// Ensure we do not overflow.[m
+[32m+[m			[32mensure!([m
+[32m+[m				[32mincoming_rewards.is_some(),[m
+[32m+[m				[32mError::<T>::AdditionOverflow[m
+[32m+[m			[32m);[m
+[32m+[m
+[32m+[m			[32mlet total_rewards = incoming_rewards.unwrap() + current_initialized_rewards;[m
+[32m+[m
+[32m+[m			[32m// Ensure we do not overflow[m
+[32m+[m			[32mensure!([m
+[32m+[m				[32mtotal_rewards.is_some(),[m
+[32m+[m				[32mError::<T>::AdditionOverflow[m
+[32m+[m			[32m);[m
+[32m+[m
+ 			// Ensure we dont go over funds[m
+ 			ensure!([m
+[31m-				current_initialized_rewards + incoming_rewards <= Self::pot(),[m
+[32m+[m				[32mtotal_rewards <= Self::pot(),[m
+ 				Error::<T>::BatchBeyondFundPot[m
+ 			);[m
+ [m
+ 			// Let's ensure we can close initialization[m
+ 			if index + rewards.len() as u32 == limit {[m
+ 				ensure!([m
+[31m-					current_initialized_rewards + incoming_rewards == Self::pot(),[m
+[32m+[m					[32mtotal_rewards == Self::pot(),[m
+ 					Error::<T>::RewardsDoNotMatchFund[m
+ 				);[m
+ 			}[m
