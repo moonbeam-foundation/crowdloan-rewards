@@ -182,6 +182,7 @@ pub mod pallet {
 		/// The caller needs to provide the unassociated relay account and a proof to succeed
 		/// with the association
 		/// The proof is nothing but a signature over the reward_address using the relay keys
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::associate_native_identity())]
 		pub fn associate_native_identity(
 			origin: OriginFor<T>,
@@ -273,6 +274,7 @@ pub mod pallet {
 
 		/// Origin must be RewardAddressChangeOrigin
 		#[pallet::weight(T::WeightInfo::change_association_with_relay_keys(proofs.len() as u32))]
+		#[pallet::call_index(1)]
 		pub fn change_association_with_relay_keys(
 			origin: OriginFor<T>,
 			reward_account: T::AccountId,
@@ -320,6 +322,7 @@ pub mod pallet {
 
 		/// Collect whatever portion of your reward are currently vested.
 		#[pallet::weight(T::WeightInfo::claim())]
+		#[pallet::call_index(2)]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let payee = ensure_signed(origin)?;
 			let initialized = <Initialized<T>>::get();
@@ -377,6 +380,7 @@ pub mod pallet {
 
 		/// Update reward address, proving that the caller owns the current native key
 		#[pallet::weight(T::WeightInfo::update_reward_address())]
+		#[pallet::call_index(3)]
 		pub fn update_reward_address(
 			origin: OriginFor<T>,
 			new_reward_account: T::AccountId,
@@ -409,6 +413,7 @@ pub mod pallet {
 		///  -The end vesting block is higher than the init vesting block
 		///  -The initialization has not complete yet
 		#[pallet::weight(T::WeightInfo::complete_initialization())]
+		#[pallet::call_index(4)]
 		pub fn complete_initialization(
 			origin: OriginFor<T>,
 			lease_ending_block: T::VestingBlockNumber,
@@ -462,6 +467,7 @@ pub mod pallet {
 		/// This does not enforce any checks other than making sure we dont go over funds
 		/// complete_initialization should perform any additional
 		#[pallet::weight(T::WeightInfo::initialize_reward_vec(rewards.len() as u32))]
+		#[pallet::call_index(5)]
 		pub fn initialize_reward_vec(
 			origin: OriginFor<T>,
 			rewards: Vec<(T::RelayChainAccountId, Option<T::AccountId>, BalanceOf<T>)>,
