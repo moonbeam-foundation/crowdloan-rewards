@@ -36,18 +36,45 @@ std = [
 In your `lib.rs` file:
 ```rust
 parameter_types! {
-	pub const VestingPeriod: BlockNumber = 1000;
+    pub const Initialized: bool = false;
+    pub const MinimumReward: Balance = 1000;
+    pub const InitializationPayment: Perbill = Perbill::from_percent(25);
+    pub const MaxInitContributorsSize: u32 = 500;
+    pub const RewardAddressRelayVoteThreshold: Perbill = Perbill::from_percent(100);
+    pub const SignatureNetworkIdentifier: &'static [u8] = b"chain-name";
 }
 
 impl pallet_crowdloan_rewards::Config for Runtime {
-	type Event = Event;
-	type RelayChainAccountId = sp_runtime::AccountId32;
-	type RewardCurrency = Balances;
-	type VestingPeriod = VestingPeriod;
+    type RuntimeEvent = RuntimeEvent;
+    type Initialized = Initialized;
+    type InitializationPayment = InitializationPayment;
+    type MaxInitContributors = MaxInitContributorsSize;
+    type MinimumReward = MinimumReward;
+    type RewardAddressRelayVoteThreshold = RewardAddressRelayVoteThreshold;
+    type RewardCurrency = Balances;
+    type RelayChainAccountId = sp_runtime::AccountId32;
+    type RewardAddressChangeOrigin = EnsureSigned<AccountId>;
+    type SignatureNetworkIdentifier = SignatureNetworkIdentifier;
+    type RewardAddressAssociateOrigin = EnsureSigned<AccountId>;
+    type VestingBlockNumber = cumulus_primitives_core::relay_chain::BlockNumber;
+    type VestingBlockProvider = cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Self>;
+    type WeightInfo = pallet_crowdloan_rewards::weights::SubstrateWeight<Runtime>;
 }
 
 construct_runtime! {
 	// --snip--
-	CrowdloanRewards: pallet_crowdloan_rewards::{Module, Call, Storage, Config<T>, Event<T>}
+	CrowdloanRewards: pallet_crowdloan_rewards
 }
+```
+
+
+In your `chain_spec.rs` file:
+```rust
+const CROWDLOAN_FUND_POT: u128 = 1_000_000_000_000_000_000_000_000_u128; // Total reward amount
+	
+	
+// Add crowdloan config in testnet_genesis
+crowdloan_rewards: CrowdloanRewardsConfig {
+	funded_amount: crowdloan_fund_pot,
+},
 ```
