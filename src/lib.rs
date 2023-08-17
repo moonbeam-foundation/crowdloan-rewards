@@ -60,8 +60,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use crate::weights::WeightInfo;
 use frame_support::pallet;
 pub use pallet::*;
+
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 mod benchmarks;
 #[cfg(test)]
@@ -72,8 +74,7 @@ pub mod weights;
 
 #[pallet]
 pub mod pallet {
-
-	use crate::weights::WeightInfo;
+	use super::*;
 	use frame_support::traits::WithdrawReasons;
 	use frame_support::{
 		pallet_prelude::*,
