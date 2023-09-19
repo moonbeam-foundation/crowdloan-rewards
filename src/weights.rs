@@ -63,9 +63,9 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialize_reward_vec(x: u32) -> Weight {
-		Weight::from_ref_time(143_109_000)
+		Weight::from_all(143_109_000)
 			// Standard Error: 21_000
-			.saturating_add(Weight::from_ref_time(
+			.saturating_add(Weight::from_all(
 				72_298_000_u64.saturating_mul(x as u64),
 			))
 			.saturating_add(T::DbWeight::get().reads(8))
@@ -74,29 +74,29 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 	fn complete_initialization() -> Weight {
-		Weight::from_ref_time(51_047_000)
+		Weight::from_all(51_047_000)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
 	fn claim() -> Weight {
-		Weight::from_ref_time(101_484_000)
+		Weight::from_all(101_484_000)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
 	fn update_reward_address() -> Weight {
-		Weight::from_ref_time(59_051_000)
+		Weight::from_all(59_051_000)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
 	fn associate_native_identity() -> Weight {
-		Weight::from_ref_time(152_997_000)
+		Weight::from_all(152_997_000)
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
 	fn change_association_with_relay_keys(x: u32) -> Weight {
-		Weight::from_ref_time(0)
+		Weight::from_all(0)
 			// Standard Error: 7_000
-			.saturating_add(Weight::from_ref_time(
+			.saturating_add(Weight::from_all(
 				47_373_000_u64.saturating_mul(x as u64),
 			))
 			.saturating_add(T::DbWeight::get().reads(6))
@@ -107,9 +107,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn initialize_reward_vec(x: u32) -> Weight {
-		Weight::from_ref_time(143_109_000)
+		Weight::from_all(143_109_000)
 			// Standard Error: 21_000
-			.saturating_add(Weight::from_ref_time(
+			.saturating_add(Weight::from_all(
 				72_298_000_u64.saturating_mul(x as u64),
 			))
 			.saturating_add(RocksDbWeight::get().reads(8))
@@ -118,29 +118,29 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(x as u64))
 	}
 	fn complete_initialization() -> Weight {
-		Weight::from_ref_time(51_047_000)
+		Weight::from_all(51_047_000)
 			.saturating_add(RocksDbWeight::get().reads(6))
 			.saturating_add(RocksDbWeight::get().writes(3))
 	}
 	fn claim() -> Weight {
-		Weight::from_ref_time(101_484_000)
+		Weight::from_all(101_484_000)
 			.saturating_add(RocksDbWeight::get().reads(11))
 			.saturating_add(RocksDbWeight::get().writes(5))
 	}
 	fn update_reward_address() -> Weight {
-		Weight::from_ref_time(59_051_000)
+		Weight::from_all(59_051_000)
 			.saturating_add(RocksDbWeight::get().reads(6))
 			.saturating_add(RocksDbWeight::get().writes(4))
 	}
 	fn associate_native_identity() -> Weight {
-		Weight::from_ref_time(152_997_000)
+		Weight::from_all(152_997_000)
 			.saturating_add(RocksDbWeight::get().reads(9))
 			.saturating_add(RocksDbWeight::get().writes(7))
 	}
 	fn change_association_with_relay_keys(x: u32) -> Weight {
-		Weight::from_ref_time(0)
+		Weight::from_all(0)
 			// Standard Error: 7_000
-			.saturating_add(Weight::from_ref_time(
+			.saturating_add(Weight::from_all(
 				47_373_000_u64.saturating_mul(x as u64),
 			))
 			.saturating_add(RocksDbWeight::get().reads(6))
