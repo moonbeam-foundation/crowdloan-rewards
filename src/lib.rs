@@ -168,7 +168,7 @@ pub mod pallet {
 	// This hook is in charge of initializing the vesting height at the first block of the parachain
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_finalize(n: <T as frame_system::Config>::BlockNumber) {
+		fn on_finalize(n: BlockNumberFor<T>) {
 			// In the first block of the parachain we need to introduce the vesting block related info
 			if n == 1u32.into() {
 				<InitVestingBlock<T>>::put(T::VestingBlockProvider::current_block_number());
@@ -706,7 +706,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		// This sets the funds of the crowdloan pallet
 		fn build(&self) {
 			T::RewardCurrency::deposit_creating(&Pallet::<T>::account_id(), self.funded_amount);
