@@ -696,7 +696,6 @@ pub mod pallet {
 		pub funded_amount: BalanceOf<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
