@@ -5,6 +5,7 @@ use crate::{BalanceOf, Call, Pallet, WRAPPED_BYTES_POSTFIX, WRAPPED_BYTES_PREFIX
 use ed25519_dalek::Signer;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::{Currency, Get, OnFinalize};
+use frame_system::pallet_prelude::*;
 use frame_system::RawOrigin;
 use parity_scale_codec::Encode;
 use sp_core::{
@@ -159,7 +160,7 @@ benchmarks! {
 
 		// We need to create the first block inherent, to initialize the initRelayBlock
 		T::VestingBlockProvider::set_block_number(1u32.into());
-		Pallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(BlockNumberFor::<T>::one());
 
 	}:  _(RawOrigin::Root, 10u32.into())
 	verify {
@@ -187,7 +188,7 @@ benchmarks! {
 
 		// First inherent
 		T::VestingBlockProvider::set_block_number(1u32.into());
-		Pallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(BlockNumberFor::<T>::one());
 
 		// Create 4th relay block, by now the user should have vested some amount
 		T::VestingBlockProvider::set_block_number(4u32.into());
@@ -218,7 +219,7 @@ benchmarks! {
 
 		// First inherent
 		T::VestingBlockProvider::set_block_number(1u32.into());
-		Pallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(BlockNumberFor::<T>::one());
 
 
 		// Let's advance the relay so that the vested  amount get transferred
@@ -263,7 +264,7 @@ benchmarks! {
 
 		// First inherent
 		T::VestingBlockProvider::set_block_number(1u32.into());
-		Pallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(BlockNumberFor::<T>::one());
 
 	}:  _(RawOrigin::Signed(caller.clone()), caller.clone(), relay_account.into(), signature)
 	verify {
@@ -317,7 +318,7 @@ benchmarks! {
 
 		// First inherent
 		T::VestingBlockProvider::set_block_number(1u32.into());
-		Pallet::<T>::on_finalize(T::BlockNumber::one());
+		Pallet::<T>::on_finalize(BlockNumberFor::<T>::one());
 
 	}:  _(RawOrigin::Signed(first_reward_account.clone()), second_reward_account.clone(), first_reward_account.clone(), proofs)
 	verify {
@@ -332,10 +333,11 @@ benchmarks! {
 mod tests {
 	use crate::mock::Test;
 	use sp_io::TestExternalities;
+	use sp_runtime::BuildStorage;
 
 	pub fn new_test_ext() -> TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Test>()
+		let t = frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
 			.unwrap();
 		TestExternalities::new(t)
 	}

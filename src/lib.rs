@@ -60,8 +60,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use crate::weights::WeightInfo;
 use frame_support::pallet;
 pub use pallet::*;
+
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 mod benchmarks;
 #[cfg(test)]
@@ -72,8 +74,7 @@ pub mod weights;
 
 #[pallet]
 pub mod pallet {
-
-	use crate::weights::WeightInfo;
+	use super::*;
 	use frame_support::traits::WithdrawReasons;
 	use frame_support::{
 		pallet_prelude::*,
@@ -167,7 +168,7 @@ pub mod pallet {
 	// This hook is in charge of initializing the vesting height at the first block of the parachain
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_finalize(n: <T as frame_system::Config>::BlockNumber) {
+		fn on_finalize(n: BlockNumberFor<T>) {
 			// In the first block of the parachain we need to introduce the vesting block related info
 			if n == 1u32.into() {
 				<InitVestingBlock<T>>::put(T::VestingBlockProvider::current_block_number());
@@ -695,7 +696,6 @@ pub mod pallet {
 		pub funded_amount: BalanceOf<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
@@ -705,7 +705,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		// This sets the funds of the crowdloan pallet
 		fn build(&self) {
 			T::RewardCurrency::deposit_creating(&Pallet::<T>::account_id(), self.funded_amount);

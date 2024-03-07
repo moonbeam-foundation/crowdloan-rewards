@@ -17,12 +17,11 @@
 //! Unit testing
 
 use crate::*;
-use frame_support::dispatch::{DispatchError, Dispatchable};
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
 use parity_scale_codec::Encode;
 use sp_core::Pair;
-use sp_runtime::{ModuleError, MultiSignature};
+use sp_runtime::{traits::Dispatchable, DispatchError, ModuleError, MultiSignature};
 
 // Constant that reflects the desired vesting period for the tests
 // Most tests complete initialization passing initRelayBlock + VESTING as the endRelayBlock

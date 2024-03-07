@@ -18,33 +18,28 @@
 use crate::{self as pallet_crowdloan_rewards, Config};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, GenesisBuild, Nothing, OnFinalize, OnInitialize},
+	traits::{ConstU32, Nothing, OnFinalize, OnInitialize},
 };
 use frame_system::EnsureSigned;
 use sp_core::{ed25519, Pair, H256};
 use sp_io;
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
+	BuildStorage, Perbill,
 };
 use sp_std::convert::{From, TryInto};
 
 pub type Balance = u128;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Crowdloan: pallet_crowdloan_rewards::{Pallet, Call, Storage, Event<T>},
-		Utility: pallet_utility::{Pallet, Call, Storage, Event},
+		System: frame_system,
+		Balances: pallet_balances,
+		Crowdloan: pallet_crowdloan_rewards,
+		Utility: pallet_utility,
 	}
 );
 
@@ -57,14 +52,14 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = u64;
+	type RuntimeTask = RuntimeTask;
+	type Nonce = u64;
 	type RuntimeCall = RuntimeCall;
-	type BlockNumber = u64;
+	type Block = Block;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
@@ -93,10 +88,10 @@ impl pallet_balances::Config for Test {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
+	type RuntimeHoldReason = ();
 	type FreezeIdentifier = ();
-	type MaxHolds = ();
 	type MaxFreezes = ();
+	type RuntimeFreezeReason = ();
 }
 
 pub struct MockedBlockProvider;
@@ -148,8 +143,8 @@ impl pallet_utility::Config for Test {
 }
 
 fn genesis(funded_amount: Balance) -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
+	let mut storage = frame_system::GenesisConfig::<Test>::default()
+		.build_storage()
 		.unwrap();
 	pallet_crowdloan_rewards::GenesisConfig::<Test> { funded_amount }
 		.assimilate_storage(&mut storage)
