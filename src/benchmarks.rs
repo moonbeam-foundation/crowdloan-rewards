@@ -103,10 +103,9 @@ fn create_sig<T: Config>(seed: u32, payload: Vec<u8>) -> (AccountId32, MultiSign
 		seed_32[j] = seed_as_slice[j]
 	}
 
-	let secret = ed25519_dalek::SecretKey::from_bytes(&seed_32).unwrap();
-	let public = ed25519_dalek::PublicKey::from(&secret);
-	let pair = ed25519_dalek::Keypair { secret, public };
-	let sig = pair.sign(&payload).to_bytes();
+	let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed_32);
+	let public = signing_key.verifying_key();
+	let sig = signing_key.sign(&payload).to_bytes();
 	let signature: MultiSignature = ed25519::Signature::from_raw(sig).into();
 
 	let ed_public: ed25519::Public = ed25519::Public::unchecked_from(public.to_bytes());
