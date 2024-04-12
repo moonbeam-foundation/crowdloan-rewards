@@ -39,6 +39,7 @@ std = [
     "sp-std/std",
     "sp-io/std",
     "scale-info/std",
+    "ed25519-dalek/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
