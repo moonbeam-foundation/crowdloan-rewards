@@ -12,16 +12,16 @@ parity-scale-codec = { version = "3.6.12", default-features = false}
 scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.188", optional = true, features = ["derive"], default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-pallet-utility = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2409" }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true , branch = "stable2409" }
-sp-trie = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true , branch = "stable2409" }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+pallet-utility = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "stable2412" }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true, branch = "stable2412" }
+sp-trie = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true, branch = "stable2412" }
 
 [features]
 default = ["std"]
@@ -39,12 +39,12 @@ std = [
     "sp-std/std",
     "sp-io/std",
     "scale-info/std",
-    "ed25519-dalek/std"
+    "ed25519-dalek/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
     "sp-trie",
     "ed25519-dalek",
-    "sp-runtime/runtime-benchmarks"
+    "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = ["frame-support/try-runtime"]
